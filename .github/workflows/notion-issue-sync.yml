@@ -12,12 +12,12 @@ jobs:
       - name: 상태 값 라벨로 설정
         id: set_status
         run: |
-          LABELS=$(echo "${{ toJson(github.event.issue.labels) }}" | jq -r '.[].name')
-          STATUS="시작 전"  # 기본값
+          LABELS=$(echo '${{ toJson(github.event.issue.labels) }}' | jq -r '.[].name')
+          STATUS="시작 전"
           for label in $LABELS; do
-            if [ "$label" = "doing" ]; then
+            if [[ "$label" == *"doing"* ]]; then
               STATUS="진행 중"
-            elif [ "$label" = "done" ]; then
+            elif [[ "$label" == *"done"* ]]; then
               STATUS="완료"
             fi
           done
