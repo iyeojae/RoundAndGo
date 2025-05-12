@@ -30,28 +30,30 @@ jobs:
           -H "Authorization: Bearer ${{ secrets.NOTION_TOKEN }}" \
           -H "Content-Type: application/json" \
           -H "Notion-Version: 2022-06-28" \
-          --data '{
-            "parent": { "database_id": "'"${{ secrets.NOTION_DATABASE_ID }}"'" },
-            "properties": {
-              "할 일": {
-                "title": [
-                  { "text": { "content": "'"${{ github.event.issue.title }}"'" } }
-                ]
-              },
-              "설명": {
-                "rich_text": [
-                  { "text": { "content": "'"${{ github.event.issue.body }}"'" } }
-                ]
-              },
-              "상태": {
-                "select": {
-                  "name": "'"${{ steps.set_status.outputs.status }}"'"
-                }
-              },
-              "담당자": {
-                "multi_select": [
-                  { "name": "이여재" }
-                ]
-              }
-            }
-          }'
+          --data @- <<EOF
+{
+  "parent": { "database_id": "${{ secrets.NOTION_DATABASE_ID }}" },
+  "properties": {
+    "할 일": {
+      "title": [
+        { "text": { "content": "${{ github.event.issue.title }}" } }
+      ]
+    },
+    "설명": {
+      "rich_text": [
+        { "text": { "content": "${{ github.event.issue.body }}" } }
+      ]
+    },
+    "상태": {
+      "select": {
+        "name": "${{ steps.set_status.outputs.status }}"
+      }
+    },
+    "담당자": {
+      "multi_select": [
+        { "name": "이여재" }
+      ]
+    }
+  }
+}
+EOF
