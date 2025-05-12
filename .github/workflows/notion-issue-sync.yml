@@ -32,6 +32,8 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
           STATUS: ${{ steps.set_status.outputs.status }}
         run: |
+          SAFE_BODY=$(jq -Rn --arg str "$ISSUE_BODY" '$str')
+
           echo "{" > request.json
           echo "  \"parent\": { \"database_id\": \"${NOTION_DATABASE_ID}\" }," >> request.json
           echo "  \"properties\": {" >> request.json
@@ -42,7 +44,7 @@ jobs:
           echo "    }," >> request.json
           echo "    \"설명\": {" >> request.json
           echo "      \"rich_text\": [" >> request.json
-          echo "        { \"text\": { \"content\": \"${ISSUE_BODY}\" } }" >> request.json
+          echo "        { \"text\": { \"content\": ${SAFE_BODY} } }" >> request.json
           echo "      ]" >> request.json
           echo "    }," >> request.json
           echo "    \"상태\": {" >> request.json
