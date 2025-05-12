@@ -32,33 +32,29 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
           STATUS: ${{ steps.set_status.outputs.status }}
         run: |
-          cat > request.json <<EOF
-{
-  "parent": { "database_id": "${NOTION_DATABASE_ID}" },
-  "properties": {
-    "할 일": {
-      "title": [
-        { "text": { "content": "${ISSUE_TITLE}" } }
-      ]
-    },
-    "설명": {
-      "rich_text": [
-        { "text": { "content": "${ISSUE_BODY}" } }
-      ]
-    },
-    "상태": {
-      "select": {
-        "name": "${STATUS}"
-      }
-    },
-    "담당자": {
-      "multi_select": [
-        { "name": "이여재" }
-      ]
-    }
-  }
-}
-EOF
+          echo "{" > request.json
+          echo "  \"parent\": { \"database_id\": \"${NOTION_DATABASE_ID}\" }," >> request.json
+          echo "  \"properties\": {" >> request.json
+          echo "    \"할 일\": {" >> request.json
+          echo "      \"title\": [" >> request.json
+          echo "        { \"text\": { \"content\": \"${ISSUE_TITLE}\" } }" >> request.json
+          echo "      ]" >> request.json
+          echo "    }," >> request.json
+          echo "    \"설명\": {" >> request.json
+          echo "      \"rich_text\": [" >> request.json
+          echo "        { \"text\": { \"content\": \"${ISSUE_BODY}\" } }" >> request.json
+          echo "      ]" >> request.json
+          echo "    }," >> request.json
+          echo "    \"상태\": {" >> request.json
+          echo "      \"select\": { \"name\": \"${STATUS}\" }" >> request.json
+          echo "    }," >> request.json
+          echo "    \"담당자\": {" >> request.json
+          echo "      \"multi_select\": [" >> request.json
+          echo "        { \"name\": \"이여재\" }" >> request.json
+          echo "      ]" >> request.json
+          echo "    }" >> request.json
+          echo "  }" >> request.json
+          echo "}" >> request.json
 
           curl -X POST 'https://api.notion.com/v1/pages' \
             -H "Authorization: Bearer ${NOTION_TOKEN}" \
