@@ -32,7 +32,7 @@ public class GolfCourseService {
 
         for (TourApiGolfDto tourDto : tourList) {
             DetailInfoDto detailDto = tourApiClient.fetchDetailInfo(tourDto.getContentid());
-            CultureGolfDto cultureDto = cultureApiClient.findByName(tourDto.getTitle());
+            CultureGolfDto cultureDto = cultureApiClient.findByAddress(tourDto.getAddr1(), tourDto.getTitle());
 
             GolfCourse course = GolfCourseMapper.toEntity(tourDto, detailDto, cultureDto);
 

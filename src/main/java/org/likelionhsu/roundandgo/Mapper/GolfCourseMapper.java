@@ -27,7 +27,6 @@ public class GolfCourseMapper {
 
         if (cultureDto != null) {
             course.setCourseType(cultureDto.getCourseType());
-            course.setCourseLength(cultureDto.getCourseLength());
             course.setHoleCount(cultureDto.getHoleCount());
             course.setTotalArea(cultureDto.getTotalArea());
         }
@@ -45,7 +44,6 @@ public class GolfCourseMapper {
                 .imageUrl(entity.getImageUrl())
                 .feeInfo(entity.getFeeInfo())
                 .courseType(entity.getCourseType())
-                .courseLength(entity.getCourseLength())
                 .holeCount(entity.getHoleCount())
                 .totalArea(entity.getTotalArea())
                 .build();

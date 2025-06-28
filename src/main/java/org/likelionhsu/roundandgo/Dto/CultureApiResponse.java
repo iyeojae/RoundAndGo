@@ -13,20 +13,19 @@ public class CultureApiResponse {
 
     @Data
     public static class Item {
+        @JsonProperty("소재지")
+        private String addr;
 
-        @JsonProperty("사업장명(대표자)")
-        private String golfCourseName;
+        @JsonProperty("업소명")
+        private String title;
 
-        @JsonProperty("코스구성(코스명)")
+        @JsonProperty("세부종류")
         private String courseType;
 
-        @JsonProperty("코스길이(야드)")
-        private String courseLength;
-
-        @JsonProperty("홀수")
+        @JsonProperty("홀수(홀)")
         private Integer holeCount;
 
-        @JsonProperty("총면적(㎡)")
+        @JsonProperty("총면적(제곱미터)")
         private String totalArea;
     }
 }

@@ -25,8 +25,7 @@ public class GolfCourse {
     @Column(name = "fee_info", columnDefinition = "TEXT")
     private String feeInfo;
 
-    private String courseType;        // 코스유형 (문화체육관광부 API)
-    private String courseLength;      // 코스길이
+    private String courseType;        //  세부정보 (문화체육관광부 API)
     private Integer holeCount;        // 홀 수
     private String totalArea;         // 총 면적
 
