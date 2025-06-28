@@ -12,7 +12,6 @@ public class GolfCourseResponseDto {
     private Double latitude;
     private Double longitude;
     private String imageUrl;
-    private String feeInfo;
     private String courseType;
     private String courseLength;
     private Integer holeCount;

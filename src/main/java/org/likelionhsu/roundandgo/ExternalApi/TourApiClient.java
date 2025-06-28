@@ -1,16 +1,9 @@
 package org.likelionhsu.roundandgo.ExternalApi;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.Nulls;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import org.likelionhsu.roundandgo.Dto.DetailInfoDto;
 import org.likelionhsu.roundandgo.Dto.TourApiGolfDto;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -57,71 +50,6 @@ public class TourApiClient {
         }
 
         return response.getResponse().getBody().getItems().getItem();
-    }
-
-    @Cacheable(value = "detailInfo", key = "#contentId")
-    public DetailInfoDto fetchDetailInfo(String contentId) {
-        String path = "/detailInfo2";
-
-        DetailInfoApiResponse response = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(path)
-                        .queryParam("serviceKey", apiKey)
-                        .queryParam("MobileOS", "ETC")
-                        .queryParam("MobileApp", "RoundAndGo")
-                        .queryParam("contentId", contentId)
-                        .queryParam("contentTypeId", 28)
-                        .queryParam("_type", "json")
-                        .build())
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(DetailInfoApiResponse.class)
-                .onErrorReturn(new DetailInfoApiResponse())
-                .block();
-
-        if (response == null || response.getResponse() == null ||
-                response.getResponse().getBody() == null ||
-                response.getResponse().getBody().getItems() == null ||
-                response.getResponse().getBody().getItems().getItem() == null) {
-            return new DetailInfoDto();
-        }
-
-        return response.getResponse().getBody().getItems().getItem().stream().findFirst().map(item -> {
-            DetailInfoDto dto = new DetailInfoDto();
-            dto.setFeeInfo(item.getInfotext());
-            return dto;
-        }).orElse(new DetailInfoDto());
-    }
-
-    @Data
-    public static class DetailInfoApiResponse {
-        private Response response;
-
-        @Data
-        public static class Response {
-            private Body body;
-        }
-
-        @Data
-        public static class Body {
-            @JsonSetter(nulls = Nulls.SKIP)
-            private Items items;
-        }
-
-        @Data
-        public static class Items {
-            @JsonSetter(nulls = Nulls.SKIP, contentNulls = Nulls.SKIP)
-            private List<Item> item;
-        }
-
-        @Data
-        public static class Item {
-            @JsonProperty("infoname")
-            private String infoname;
-
-            @JsonProperty("infotext")
-            private String infotext;
-        }
     }
 
     @Data

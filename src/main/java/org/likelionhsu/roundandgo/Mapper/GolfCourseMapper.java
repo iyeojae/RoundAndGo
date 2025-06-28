@@ -1,7 +1,6 @@
 package org.likelionhsu.roundandgo.Mapper;
 
 import org.likelionhsu.roundandgo.Dto.CultureGolfDto;
-import org.likelionhsu.roundandgo.Dto.DetailInfoDto;
 import org.likelionhsu.roundandgo.Dto.GolfCourseResponseDto;
 import org.likelionhsu.roundandgo.Dto.TourApiGolfDto;
 import org.likelionhsu.roundandgo.Entity.GolfCourse;
@@ -9,7 +8,6 @@ import org.likelionhsu.roundandgo.Entity.GolfCourse;
 public class GolfCourseMapper {
     public static GolfCourse toEntity(
             TourApiGolfDto tourDto,
-            DetailInfoDto detailDto,
             CultureGolfDto cultureDto) {
 
         GolfCourse course = new GolfCourse();
@@ -20,10 +18,6 @@ public class GolfCourseMapper {
         course.setLongitude(Double.parseDouble(tourDto.getMapx()));
         course.setImageUrl(tourDto.getFirstimage());
         course.setContentId(tourDto.getContentid());
-
-        if (detailDto != null) {
-            course.setFeeInfo(detailDto.getFeeInfo());
-        }
 
         if (cultureDto != null) {
             course.setCourseType(cultureDto.getCourseType());
@@ -42,7 +36,6 @@ public class GolfCourseMapper {
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
                 .imageUrl(entity.getImageUrl())
-                .feeInfo(entity.getFeeInfo())
                 .courseType(entity.getCourseType())
                 .holeCount(entity.getHoleCount())
                 .totalArea(entity.getTotalArea())

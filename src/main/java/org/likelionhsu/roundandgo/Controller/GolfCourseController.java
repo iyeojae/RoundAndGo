@@ -41,6 +41,18 @@ public class GolfCourseController {
         );
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<CommonResponse<List<GolfCourseResponseDto>>> searchByName(@RequestParam("name") String name) {
+        List<GolfCourseResponseDto> list = golfCourseService.searchGolfCoursesByName(name);
+        return ResponseEntity.ok(
+                CommonResponse.<List<GolfCourseResponseDto>>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("골프장명 검색 성공")
+                        .data(list)
+                        .build()
+        );
+    }
+
     // 수동으로 골프장 정보 동기화 배포 시 무조건 제거
     @PostMapping("/sync")
     public ResponseEntity<CommonResponse<String>> manualSync() {

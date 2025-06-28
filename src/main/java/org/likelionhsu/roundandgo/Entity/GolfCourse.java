@@ -22,9 +22,6 @@ public class GolfCourse {
     private Double longitude;         // 경도
     private String imageUrl;          // 대표 이미지
 
-    @Column(name = "fee_info", columnDefinition = "TEXT")
-    private String feeInfo;
-
     private String courseType;        //  세부정보 (문화체육관광부 API)
     private Integer holeCount;        // 홀 수
     private String totalArea;         // 총 면적
