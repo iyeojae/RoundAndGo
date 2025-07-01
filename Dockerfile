@@ -1,30 +1,28 @@
-# --------- Step 1: Build Stage ---------
+# 🔧 1단계: Gradle 빌드용 컨테이너
 FROM gradle:8.7.0-jdk21-alpine AS builder
 
 WORKDIR /app
 
-# gradle 캐시 활용을 위해 먼저 설정 파일 복사
-COPY build.gradle.kts settings.gradle.kts ./
+# 프로젝트 관련 파일 복사
 COPY gradle ./gradle
-COPY gradlew ./
-COPY gradle.properties ./
+COPY gradlew ./gradlew
+COPY build.gradle ./build.gradle
+COPY settings.gradle ./settings.gradle
+COPY src ./src
 
-# 종속성만 먼저 다운
-RUN ./gradlew dependencies --no-daemon || true
+# gradlew 실행 권한 추가 (Windows에선 필수)
+RUN chmod +x gradlew
 
-# 전체 소스 복사
-COPY . .
+# 종속성 미리 다운 (캐시 활용) + 테스트 제외
+RUN ./gradlew build -x test
 
-# 빌드 실행
-RUN ./gradlew build --no-daemon
-
-# --------- Step 2: Runtime Stage ---------
+# 🔧 2단계: 런타임 이미지
 FROM eclipse-temurin:21-jdk-alpine
 
 WORKDIR /app
 
-# 빌드된 jar 복사
-COPY --from=builder /app/build/libs/RoundAndGo-0.0.1-SNAPSHOT.jar app.jar
+# 위에서 만든 JAR 복사
+COPY --from=builder /app/build/libs/*.jar app.jar
 
 # 실행
 ENTRYPOINT ["java", "-jar", "app.jar"]
