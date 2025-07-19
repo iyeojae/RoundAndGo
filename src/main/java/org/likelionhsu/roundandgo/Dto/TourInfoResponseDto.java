@@ -1,13 +1,13 @@
 package org.likelionhsu.roundandgo.Dto;
 
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import org.likelionhsu.roundandgo.Dto.TourItem;
 
 import java.util.List;
 
 @Data
-@AllArgsConstructor
+@Builder
 public class TourInfoResponseDto {
     private List<TourItem> attractions;
     private List<TourItem> accommodations;

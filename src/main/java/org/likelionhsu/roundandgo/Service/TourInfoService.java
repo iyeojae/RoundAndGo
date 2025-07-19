@@ -31,7 +31,11 @@ public class TourInfoService {
         List<TourItem> accommodations = tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(32));
         List<TourItem> restaurants = tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(39));
 
-        return new TourInfoResponseDto(attractions, accommodations, restaurants);
+        return TourInfoResponseDto.builder()
+                .attractions(attractions)
+                .accommodations(accommodations)
+                .restaurants(restaurants)
+                .build();
     }
 
     /**
@@ -86,7 +90,11 @@ public class TourInfoService {
         List<TourItem> accommodations = tourApiClient.fetchNearbyItems(mapX, mapY, List.of(32));
         List<TourItem> restaurants = tourApiClient.fetchNearbyItems(mapX, mapY, List.of(39));
 
-        return new TourInfoResponseDto(attractions, accommodations, restaurants);
+        return TourInfoResponseDto.builder()
+                .attractions(attractions)
+                .accommodations(accommodations)
+                .restaurants(restaurants)
+                .build();
     }
 
     /**
