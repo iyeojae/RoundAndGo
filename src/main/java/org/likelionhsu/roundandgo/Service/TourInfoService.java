@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Dto.TourInfoResponseDto;
 import org.likelionhsu.roundandgo.Dto.TourItem;
 import org.likelionhsu.roundandgo.ExternalApi.TourApiClient;
+import org.likelionhsu.roundandgo.Mapper.CourseTypeMapper;
 import org.likelionhsu.roundandgo.Mapper.RegionCodeMapper;
 import org.springframework.stereotype.Service;
 
@@ -116,7 +117,7 @@ public class TourInfoService {
      * @return 음식점 리스트
      */
     public List<TourItem> fetchNearByRestaurants(double mapX, double mapY) {
-        return tourApiClient.fetchNearbyItems(mapX, mapY, List.of(32)); // 음식점
+        return tourApiClient.fetchNearbyItems(mapX, mapY, List.of(39)); // 음식점
     }
 
     /**
@@ -127,6 +128,24 @@ public class TourInfoService {
      * @return 숙소 리스트
      */
     public List<TourItem> fetchNearByAccommodations(double mapX, double mapY) {
-        return tourApiClient.fetchNearbyItems(mapX, mapY, List.of(39)); // 숙소
+        return tourApiClient.fetchNearbyItems(mapX, mapY, List.of(32)); // 숙소
+    }
+
+    public List<TourItem> fetchAccommodationsByCourseType(String province, String city, String courseType) {
+        List<TourItem> all = fetchAccommodations(province, city);
+        List<String> cat3Filter = CourseTypeMapper.getCat3Codes(courseType);
+
+        return all.stream()
+                .filter(item -> cat3Filter.contains(item.getCat3()))
+                .toList();
+    }
+
+    public List<TourItem> fetchNearByAccommodationsByCourseType(double mapX, double mapY, String courseType) {
+        List<TourItem> all = fetchNearByAccommodations(mapX, mapY);
+        List<String> cat3Filter = CourseTypeMapper.getCat3Codes(courseType);
+
+        return all.stream()
+                .filter(item -> cat3Filter.contains(item.getCat3()))
+                .toList();
     }
 }

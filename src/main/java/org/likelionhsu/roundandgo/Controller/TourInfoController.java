@@ -58,6 +58,15 @@ public class TourInfoController {
         return ResponseEntity.ok(tourInfoService.fetchAccommodations(province, city));
     }
 
+    @GetMapping("/accommodations/by-course-type")
+    public ResponseEntity<List<TourItem>> fetchAccommodationsByCourseType(
+            @RequestParam String province,
+            @RequestParam String city,
+            @RequestParam String courseType) {
+
+        return ResponseEntity.ok(tourInfoService.fetchAccommodationsByCourseType(province, city, courseType));
+    }
+
     @GetMapping("/nearby")
     public ResponseEntity<CommonResponse<TourInfoResponseDto>> getNearbyItems(
             @RequestParam double mapX,
@@ -93,5 +102,14 @@ public class TourInfoController {
             @RequestParam double mapX,
             @RequestParam double mapY) {
         return ResponseEntity.ok(tourInfoService.fetchNearByAccommodations(mapX, mapY));
+    }
+
+    @GetMapping("/nearby/accommodations/by-course-type")
+    public ResponseEntity<List<TourItem>> fetchNearByAccommodationsByCourseType(
+            @RequestParam double mapX,
+            @RequestParam double mapY,
+            @RequestParam String courseType) {
+
+        return ResponseEntity.ok(tourInfoService.fetchNearByAccommodationsByCourseType(mapX, mapY, courseType));
     }
 }
