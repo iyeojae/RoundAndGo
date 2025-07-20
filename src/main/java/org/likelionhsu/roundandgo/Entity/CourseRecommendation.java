@@ -28,6 +28,10 @@ public class CourseRecommendation {
     @ManyToOne(fetch = FetchType.LAZY)
     private GolfCourse golfCourse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user; // Optional: if you want to track which user created the recommendation
+
     @ElementCollection
     private List<String> recommendationOrder; // ["food", "tour", "stay"]
 
@@ -39,7 +43,8 @@ public class CourseRecommendation {
             String courseType,
             LocalTime teeOffTime,
             LocalTime endTime,
-            List<RecommendedPlaceDto> placeDtos) {
+            List<RecommendedPlaceDto> placeDtos,
+            User user) {
 
         CourseRecommendation course = new CourseRecommendation();
         course.golfCourse = golfCourse;
@@ -48,6 +53,7 @@ public class CourseRecommendation {
         course.teeOffTime = teeOffTime;
         course.endTime = endTime;
         course.recommendationOrder = determineOrder(endTime);
+        course.user = user; // Optional, if you want to associate with a user
 
         for (RecommendedPlaceDto dto : placeDtos) {
             if (dto != null) {
