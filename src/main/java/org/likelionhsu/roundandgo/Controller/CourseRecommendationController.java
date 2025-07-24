@@ -2,8 +2,7 @@ package org.likelionhsu.roundandgo.Controller;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
-import org.likelionhsu.roundandgo.Dto.CourseRecommendationRequestDto;
-import org.likelionhsu.roundandgo.Dto.CourseRecommendationResponseDto;
+import org.likelionhsu.roundandgo.Dto.Response.CourseRecommendationResponseDto;
 import org.likelionhsu.roundandgo.Security.UserDetailsImpl;
 import org.likelionhsu.roundandgo.Service.CourseRecommendationService;
 import org.springframework.http.HttpStatus;

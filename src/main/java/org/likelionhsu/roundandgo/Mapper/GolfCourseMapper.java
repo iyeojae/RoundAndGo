@@ -1,8 +1,8 @@
 package org.likelionhsu.roundandgo.Mapper;
 
-import org.likelionhsu.roundandgo.Dto.CultureGolfDto;
-import org.likelionhsu.roundandgo.Dto.GolfCourseResponseDto;
-import org.likelionhsu.roundandgo.Dto.TourApiGolfDto;
+import org.likelionhsu.roundandgo.Dto.Api.CultureGolfDto;
+import org.likelionhsu.roundandgo.Dto.Response.GolfCourseResponseDto;
+import org.likelionhsu.roundandgo.Dto.Api.TourApiGolfDto;
 import org.likelionhsu.roundandgo.Entity.GolfCourse;
 
 public class GolfCourseMapper {

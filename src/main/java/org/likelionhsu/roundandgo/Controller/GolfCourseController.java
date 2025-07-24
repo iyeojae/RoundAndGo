@@ -2,7 +2,7 @@ package org.likelionhsu.roundandgo.Controller;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
-import org.likelionhsu.roundandgo.Dto.GolfCourseResponseDto;
+import org.likelionhsu.roundandgo.Dto.Response.GolfCourseResponseDto;
 import org.likelionhsu.roundandgo.Service.GolfCourseService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

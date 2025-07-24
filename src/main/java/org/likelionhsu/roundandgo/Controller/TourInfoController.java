@@ -2,8 +2,8 @@ package org.likelionhsu.roundandgo.Controller;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
-import org.likelionhsu.roundandgo.Dto.TourInfoResponseDto;
-import org.likelionhsu.roundandgo.Dto.TourItem;
+import org.likelionhsu.roundandgo.Dto.Response.TourInfoResponseDto;
+import org.likelionhsu.roundandgo.Dto.Api.TourItem;
 import org.likelionhsu.roundandgo.Service.TourInfoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

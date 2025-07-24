@@ -2,11 +2,15 @@ package org.likelionhsu.roundandgo.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
-import org.likelionhsu.roundandgo.Dto.CourseRecommendationRequestDto;
-import org.likelionhsu.roundandgo.Dto.CourseRecommendationResponseDto;
-import org.likelionhsu.roundandgo.Dto.RecommendedPlaceDto;
-import org.likelionhsu.roundandgo.Dto.TourItem;
-import org.likelionhsu.roundandgo.Entity.*;
+import org.likelionhsu.roundandgo.Common.ScheduleColor;
+import org.likelionhsu.roundandgo.Dto.Request.ScheduleRequestDto;
+import org.likelionhsu.roundandgo.Dto.Response.CourseRecommendationResponseDto;
+import org.likelionhsu.roundandgo.Dto.Api.RecommendedPlaceDto;
+import org.likelionhsu.roundandgo.Dto.Api.TourItem;
+import org.likelionhsu.roundandgo.Entity.CourseRecommendation;
+import org.likelionhsu.roundandgo.Entity.GolfCourse;
+import org.likelionhsu.roundandgo.Entity.RecommendedPlace;
+import org.likelionhsu.roundandgo.Entity.User;
 import org.likelionhsu.roundandgo.ExternalApi.TourApiClient;
 import org.likelionhsu.roundandgo.Mapper.CourseTypeMapper;
 import org.likelionhsu.roundandgo.Repository.CourseRecommendationRepository;
@@ -17,7 +21,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -27,6 +33,7 @@ public class CourseRecommendationService {
     private final GolfCourseRepository golfCourseRepository;
     private final CourseRecommendationRepository courseRecommendationRepository;
     private final TourApiClient tourApiClient;
+    private final ScheduleService scheduleService;
 
     public CourseRecommendationResponseDto createRecommendation(User user, Long golfCourseId, String teeOffTime, String courseType) {
 
@@ -48,6 +55,10 @@ public class CourseRecommendationService {
         CourseRecommendation saved = courseRecommendationRepository.save(
                 CourseRecommendation.create(golfCourse, courseType, teeOff, endTime, List.of(food, tour, stay), user)
         );
+
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        createSchedulesForRecommendation(user, golfCourse, date, saved);
 
         return CourseRecommendationResponseDto.of(saved);
     }
@@ -80,14 +91,7 @@ public class CourseRecommendationService {
         course.setEndTime(endTime);
         course.setCourseType(courseType);
         course.setCourseTypeLabel(resolveLabel(courseType));
-        // 기존 추천순서(RecommendationOrder) 리스트 삭제 및 새로 추가
-        course.getRecommendationOrders().clear();
-        for (String orderType : getRecommendationOrder(endTime)) {
-            RecommendationOrder order = new RecommendationOrder();
-            order.setType(orderType);
-            order.setCourseRecommendation(course);
-            course.getRecommendationOrders().add(order);
-        }
+        course.setRecommendationOrder(getRecommendationOrder(endTime));
 
         // 골프장 정보 유지 or 수정
         GolfCourse golfCourse = course.getGolfCourse();
@@ -170,6 +174,36 @@ public class CourseRecommendationService {
                         .statusCode(403)
                         .msg(e.getMessage())
                         .build());
+    }
+
+    private void createSchedulesForRecommendation(
+            User user,
+            GolfCourse golfCourse,
+            String date,  // 예시: "2025-08-15"
+            CourseRecommendation courseRecommendation
+    ) {
+        // (1) 골프장 일정
+        ScheduleRequestDto golfSchedule = new ScheduleRequestDto();
+        golfSchedule.setTitle("[라운딩] " + golfCourse.getName());
+        golfSchedule.setAllDay(true);
+        golfSchedule.setCategory("라운딩");
+        golfSchedule.setLocation(golfCourse.getAddress());
+        golfSchedule.setColor(ScheduleColor.GREEN);
+        String startDateTime = date + "T00:00:00";
+        String endDateTime = date + "T23:59:59";
+        scheduleService.createSchedule(user, golfSchedule, startDateTime , endDateTime);
+
+        // (2) 추천 장소(음식점, 관광지, 숙소) 일정
+        List<RecommendedPlace> recommendedPlaces = courseRecommendation.getRecommendedPlaces();
+        for (RecommendedPlace place : recommendedPlaces) {
+            ScheduleRequestDto placeSchedule = new ScheduleRequestDto();
+            placeSchedule.setTitle("[추천] " + place.getName());
+            placeSchedule.setAllDay(true);
+            placeSchedule.setCategory(place.getType());
+            placeSchedule.setLocation(place.getAddress());
+            placeSchedule.setColor(ScheduleColor.BLUE);
+            scheduleService.createSchedule(user, placeSchedule, startDateTime, endDateTime);
+        }
     }
 }
 

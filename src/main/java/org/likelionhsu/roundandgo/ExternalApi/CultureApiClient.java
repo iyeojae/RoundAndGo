@@ -1,7 +1,7 @@
 package org.likelionhsu.roundandgo.ExternalApi;
 
-import org.likelionhsu.roundandgo.Dto.CultureApiResponse;
-import org.likelionhsu.roundandgo.Dto.CultureGolfDto;
+import org.likelionhsu.roundandgo.Dto.Api.CultureGolfDto;
+import org.likelionhsu.roundandgo.Dto.Response.CultureApiResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;

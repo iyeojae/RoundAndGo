@@ -5,7 +5,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.likelionhsu.roundandgo.Dto.RecommendedPlaceDto;
+import org.likelionhsu.roundandgo.Dto.Api.RecommendedPlaceDto;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -32,8 +32,8 @@ public class CourseRecommendation {
     @JoinColumn(name = "user_id")
     private User user; // Optional: if you want to track which user created the recommendation
 
-    @OneToMany(mappedBy = "courseRecommendation", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RecommendationOrder> recommendationOrders = new ArrayList<>();
+    @ElementCollection
+    private List<String> recommendationOrder; // ["food", "tour", "stay"]
 
     @OneToMany(mappedBy = "courseRecommendation", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecommendedPlace> recommendedPlaces = new ArrayList<>();
@@ -52,12 +52,7 @@ public class CourseRecommendation {
         course.courseTypeLabel = resolveLabel(courseType);
         course.teeOffTime = teeOffTime;
         course.endTime = endTime;
-        for (String orderType : determineOrder(endTime)) {
-            RecommendationOrder order = new RecommendationOrder();
-            order.setType(orderType);
-            order.setCourseRecommendation(course);
-            course.recommendationOrders.add(order);
-        }
+        course.recommendationOrder = determineOrder(endTime);
         course.user = user; // Optional, if you want to associate with a user
 
         for (RecommendedPlaceDto dto : placeDtos) {

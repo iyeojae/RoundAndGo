@@ -1,8 +1,8 @@
 package org.likelionhsu.roundandgo.Service;
 
 import lombok.RequiredArgsConstructor;
-import org.likelionhsu.roundandgo.Dto.TourInfoResponseDto;
-import org.likelionhsu.roundandgo.Dto.TourItem;
+import org.likelionhsu.roundandgo.Dto.Response.TourInfoResponseDto;
+import org.likelionhsu.roundandgo.Dto.Api.TourItem;
 import org.likelionhsu.roundandgo.ExternalApi.TourApiClient;
 import org.likelionhsu.roundandgo.Mapper.CourseTypeMapper;
 import org.likelionhsu.roundandgo.Mapper.RegionCodeMapper;
