@@ -4,6 +4,7 @@ import org.likelionhsu.roundandgo.Common.CommunityCategory;
 import org.likelionhsu.roundandgo.Entity.Community;
 import org.likelionhsu.roundandgo.Entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
@@ -21,4 +22,15 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
      * @return 해당 사용자가 작성한 커뮤니티 게시글 리스트
      */
     List<Community> findByUser(User user); // ← 사용자 기반 조회 메서드
+
+    // ✅ 전체 좋아요 Top 3
+    @Query("SELECT c FROM Community c LEFT JOIN CommunityLike l ON c = l.community " +
+            "GROUP BY c ORDER BY COUNT(l) DESC LIMIT 3")
+    List<Community> findTop3ByLikes();
+
+    // ✅ 카테고리별 좋아요 Top 3
+    @Query("SELECT c FROM Community c LEFT JOIN CommunityLike l ON c = l.community " +
+            "WHERE c.category = :category " +
+            "GROUP BY c ORDER BY COUNT(l) DESC LIMIT 3")
+    List<Community> findTop3ByCategoryOrderByLikes(CommunityCategory category);
 }

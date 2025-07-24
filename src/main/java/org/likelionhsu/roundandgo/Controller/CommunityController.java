@@ -2,8 +2,8 @@ package org.likelionhsu.roundandgo.Controller;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
-import org.likelionhsu.roundandgo.Dto.CommunityRequestDto;
-import org.likelionhsu.roundandgo.Dto.CommunityResponseDto;
+import org.likelionhsu.roundandgo.Dto.Request.CommunityRequestDto;
+import org.likelionhsu.roundandgo.Dto.Response.CommunityResponseDto;
 import org.likelionhsu.roundandgo.Security.UserDetailsImpl;
 import org.likelionhsu.roundandgo.Service.CommunityService;
 import org.springframework.http.HttpStatus;
@@ -132,6 +132,56 @@ public class CommunityController {
                 .statusCode(200)
                 .msg("내가 작성한 게시글 조회 성공")
                 .data(posts)
+                .build());
+    }
+
+    /**
+     * 게시글 좋아요 토글
+     * @param id 게시글 ID
+     * @param userDetails 현재 로그인한 사용자 정보
+     * @return 좋아요 상태 변경 결과
+     */
+    @PostMapping("/{id}/like")
+    public ResponseEntity<CommonResponse<Boolean>> likePost(@PathVariable Long id,
+                                                            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        boolean liked = communityService.toggleLike(userDetails.getUser(), id);
+        return ResponseEntity.ok(CommonResponse.<Boolean>builder()
+                .statusCode(HttpStatus.OK.value())
+                .msg(liked ? "좋아요 추가됨" : "좋아요 취소됨")
+                .data(liked)
+                .build());
+    }
+
+    // 전체 인기 게시글 TOP 3
+    @GetMapping("/popular")
+    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getPopularPosts() {
+        List<CommunityResponseDto> response = communityService.getTop3PopularPosts();
+        return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
+                .statusCode(HttpStatus.OK.value())
+                .msg("인기 게시글 조회 성공")
+                .data(response)
+                .build());
+    }
+
+    // 카테고리별 인기 게시글 TOP 3
+    @GetMapping("/popular/category")
+    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getPopularPostsByCategory(
+            @RequestParam String category) {
+        List<CommunityResponseDto> response = communityService.getTop3PopularPostsByCategory(category);
+        return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
+                .statusCode(HttpStatus.OK.value())
+                .msg("카테고리별 인기 게시글 조회 성공")
+                .data(response)
+                .build());
+    }
+
+    @GetMapping("/likeCount/{id}")
+    public ResponseEntity<CommonResponse<Integer>> getLikeCount(@PathVariable Long id) {
+        int likeCount = communityService.countLikes(id);
+        return ResponseEntity.ok(CommonResponse.<Integer>builder()
+                .statusCode(HttpStatus.OK.value())
+                .msg("좋아요 수 조회 성공")
+                .data(likeCount)
                 .build());
     }
 }

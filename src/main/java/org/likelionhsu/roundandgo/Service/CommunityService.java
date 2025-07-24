@@ -2,20 +2,24 @@ package org.likelionhsu.roundandgo.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommunityCategory;
-import org.likelionhsu.roundandgo.Dto.CommunityRequestDto;
-import org.likelionhsu.roundandgo.Dto.CommunityResponseDto;
+import org.likelionhsu.roundandgo.Dto.Request.CommunityRequestDto;
+import org.likelionhsu.roundandgo.Dto.Response.CommunityResponseDto;
 import org.likelionhsu.roundandgo.Entity.Community;
+import org.likelionhsu.roundandgo.Entity.CommunityLike;
 import org.likelionhsu.roundandgo.Entity.User;
+import org.likelionhsu.roundandgo.Repository.CommunityLikeRepository;
 import org.likelionhsu.roundandgo.Repository.CommunityRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class CommunityService {
 
     private final CommunityRepository communityRepository;
+    private final CommunityLikeRepository likeRepository;
 
     public CommunityResponseDto createCommunity(User user, CommunityRequestDto request) {
         CommunityCategory category = CommunityCategory.fromLabel(request.getCategory());
@@ -74,6 +78,43 @@ public class CommunityService {
 
     public List<CommunityResponseDto> getPostsByUser(User user) {
         return communityRepository.findByUser(user).stream()
+                .map(CommunityResponseDto::new)
+                .toList();
+    }
+
+    public boolean toggleLike(User user, Long communityId) {
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
+
+        Optional<CommunityLike> existingLike = likeRepository.findByUserAndCommunity(user, community);
+
+        if (existingLike.isPresent()) {
+            likeRepository.delete(existingLike.get());
+            return false; // 좋아요 취소
+        } else {
+            likeRepository.save(CommunityLike.builder()
+                    .user(user)
+                    .community(community)
+                    .build());
+            return true; // 좋아요 추가
+        }
+    }
+
+    public int countLikes(Long communityId) {
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
+        return likeRepository.countByCommunity(community);
+    }
+
+    public List<CommunityResponseDto> getTop3PopularPosts() {
+        return communityRepository.findTop3ByLikes().stream()
+                .map(CommunityResponseDto::new)
+                .toList();
+    }
+
+    public List<CommunityResponseDto> getTop3PopularPostsByCategory(String category) {
+        CommunityCategory categoryEnum = CommunityCategory.fromLabel(category);
+        return communityRepository.findTop3ByCategoryOrderByLikes(categoryEnum).stream()
                 .map(CommunityResponseDto::new)
                 .toList();
     }
