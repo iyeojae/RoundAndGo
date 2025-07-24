@@ -5,8 +5,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.likelionhsu.roundandgo.Entity.CourseRecommendation;
+import org.likelionhsu.roundandgo.Entity.RecommendationOrder;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @AllArgsConstructor
@@ -17,7 +19,7 @@ public class CourseRecommendationResponseDto {
     private String courseTypeLabel;
     private String golfCourseName;
     private String estimatedEndTime;
-    private List<String> recommendationOrder; // ["food", "tour", "stay"]
+    private List<String> recommendationOrder;
     private List<RecommendedPlaceDto> recommendedPlaces;
 
     public static CourseRecommendationResponseDto of(CourseRecommendation entity) {
@@ -38,7 +40,11 @@ public class CourseRecommendationResponseDto {
                 .courseTypeLabel(entity.getCourseTypeLabel())
                 .golfCourseName(entity.getGolfCourse().getName())
                 .estimatedEndTime(entity.getEndTime().toString())
-                .recommendationOrder(entity.getRecommendationOrder())
+                .recommendationOrder(
+                        entity.getRecommendationOrders().stream()
+                                .map(RecommendationOrder::getType) // "food", "tour", "stay"
+                                .collect(Collectors.toList())
+                )
                 .recommendedPlaces(placeDtos)
                 .build();
     }
