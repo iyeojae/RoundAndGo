@@ -32,8 +32,8 @@ public class CourseRecommendation {
     @JoinColumn(name = "user_id")
     private User user; // Optional: if you want to track which user created the recommendation
 
-    @ElementCollection
-    private List<String> recommendationOrder; // ["food", "tour", "stay"]
+    @OneToMany(mappedBy = "courseRecommendation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RecommendationOrder> recommendationOrders = new ArrayList<>();
 
     @OneToMany(mappedBy = "courseRecommendation", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecommendedPlace> recommendedPlaces = new ArrayList<>();
@@ -52,7 +52,12 @@ public class CourseRecommendation {
         course.courseTypeLabel = resolveLabel(courseType);
         course.teeOffTime = teeOffTime;
         course.endTime = endTime;
-        course.recommendationOrder = determineOrder(endTime);
+        for (String orderType : determineOrder(endTime)) {
+            RecommendationOrder order = new RecommendationOrder();
+            order.setType(orderType);
+            order.setCourseRecommendation(course);
+            course.recommendationOrders.add(order);
+        }
         course.user = user; // Optional, if you want to associate with a user
 
         for (RecommendedPlaceDto dto : placeDtos) {

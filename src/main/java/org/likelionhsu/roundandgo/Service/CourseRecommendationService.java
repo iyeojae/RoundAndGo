@@ -6,10 +6,7 @@ import org.likelionhsu.roundandgo.Dto.CourseRecommendationRequestDto;
 import org.likelionhsu.roundandgo.Dto.CourseRecommendationResponseDto;
 import org.likelionhsu.roundandgo.Dto.RecommendedPlaceDto;
 import org.likelionhsu.roundandgo.Dto.TourItem;
-import org.likelionhsu.roundandgo.Entity.CourseRecommendation;
-import org.likelionhsu.roundandgo.Entity.GolfCourse;
-import org.likelionhsu.roundandgo.Entity.RecommendedPlace;
-import org.likelionhsu.roundandgo.Entity.User;
+import org.likelionhsu.roundandgo.Entity.*;
 import org.likelionhsu.roundandgo.ExternalApi.TourApiClient;
 import org.likelionhsu.roundandgo.Mapper.CourseTypeMapper;
 import org.likelionhsu.roundandgo.Repository.CourseRecommendationRepository;
@@ -83,7 +80,14 @@ public class CourseRecommendationService {
         course.setEndTime(endTime);
         course.setCourseType(courseType);
         course.setCourseTypeLabel(resolveLabel(courseType));
-        course.setRecommendationOrder(getRecommendationOrder(endTime));
+        // 기존 추천순서(RecommendationOrder) 리스트 삭제 및 새로 추가
+        course.getRecommendationOrders().clear();
+        for (String orderType : getRecommendationOrder(endTime)) {
+            RecommendationOrder order = new RecommendationOrder();
+            order.setType(orderType);
+            order.setCourseRecommendation(course);
+            course.getRecommendationOrders().add(order);
+        }
 
         // 골프장 정보 유지 or 수정
         GolfCourse golfCourse = course.getGolfCourse();
