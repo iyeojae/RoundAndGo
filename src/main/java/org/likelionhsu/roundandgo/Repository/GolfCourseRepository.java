@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface GolfCourseRepository extends JpaRepository<GolfCourse, Long> {
     Optional<GolfCourse> findByContentId(String contentId);
     List<GolfCourse> findAll();
+    List<GolfCourse> findByAddressContainingIgnoreCase(String address);
 }

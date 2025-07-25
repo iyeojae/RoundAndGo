@@ -86,6 +86,15 @@ public class GolfCourseService {
         return false;
     }
 
+    @Transactional(readOnly = true)
+    public List<GolfCourseResponseDto> searchGolfCoursesByAddress(String address) {
+        String normalizedSearch = normalizeAddress(address); // 검색어 정규화
+        return golfCourseRepository.findAll().stream()
+                .filter(course -> isAddressMatch(course.getAddress(), normalizedSearch))
+                .map(GolfCourseMapper::toResponseDto)
+                .collect(Collectors.toList());
+    }
+
     private String normalizeGolfName(String name) {
         if (name == null) return "";
         // 1. 괄호 및 괄호 안 내용 제거
@@ -95,5 +104,20 @@ public class GolfCourseService {
                 .replaceAll("[()]", "")
                 .toLowerCase();
         return result;
+    }
+
+    private boolean isAddressMatch(String address1, String address2) {
+        if (address1 == null || address2 == null) return false;
+
+        String normalizedAddress1 = normalizeAddress(address1);
+        String normalizedAddress2 = normalizeAddress(address2);
+
+        return normalizedAddress1.contains(normalizedAddress2);
+    }
+
+    private String normalizeAddress(String address) {
+        if (address == null) return "";
+        // 공백 및 특수문자 제거, 소문자로 변환
+        return address.replaceAll("\\s+", "").replaceAll("[^a-zA-Z0-9가-힣]", "").toLowerCase();
     }
 }

@@ -53,6 +53,18 @@ public class GolfCourseController {
         );
     }
 
+    @GetMapping("/search-by-address")
+    public ResponseEntity<CommonResponse<List<GolfCourseResponseDto>>> searchByAddress(@RequestParam("address") String address) {
+        List<GolfCourseResponseDto> list = golfCourseService.searchGolfCoursesByAddress(address);
+        return ResponseEntity.ok(
+                CommonResponse.<List<GolfCourseResponseDto>>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("골프장 주소 검색 성공")
+                        .data(list)
+                        .build()
+        );
+    }
+
     // 수동으로 골프장 정보 동기화 배포 시 무조건 제거
     @PostMapping("/sync")
     public ResponseEntity<CommonResponse<String>> manualSync() {
