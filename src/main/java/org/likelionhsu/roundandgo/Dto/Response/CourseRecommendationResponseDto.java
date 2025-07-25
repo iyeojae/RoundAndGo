@@ -19,7 +19,7 @@ public class CourseRecommendationResponseDto {
     private String courseTypeLabel;
     private String golfCourseName;
     private String estimatedEndTime;
-    private List<RecommendationOrder> recommendationOrder; // ["food", "tour", "stay"]
+    private List<String> recommendationOrder; // ["food", "tour", "stay"]
     private List<RecommendedPlaceDto> recommendedPlaces;
 
     public static CourseRecommendationResponseDto of(CourseRecommendation entity) {
@@ -35,13 +35,22 @@ public class CourseRecommendationResponseDto {
                         .build())
                 .toList();
 
+        // 무한 순환 원인: recommendationOrders 엔티티를 그대로 담아서!
+        // List<RecommendationOrder> orders = entity.getRecommendationOrders();
+
+        // ➡️ 이렇게 "type"만 리스트로 변환!
+        List<String> orderTypes = entity.getRecommendationOrders().stream()
+                .map(RecommendationOrder::getType)
+                .toList();
+
         return CourseRecommendationResponseDto.builder()
                 .id(entity.getId())
                 .courseTypeLabel(entity.getCourseTypeLabel())
                 .golfCourseName(entity.getGolfCourse().getName())
                 .estimatedEndTime(entity.getEndTime().toString())
-                .recommendationOrder(entity.getRecommendationOrders())
+                .recommendationOrder(orderTypes)  // 무한반복 해결!
                 .recommendedPlaces(placeDtos)
                 .build();
     }
+
 }
