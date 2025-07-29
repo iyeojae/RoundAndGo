@@ -40,6 +40,18 @@ spring:
     deserialization:
       accept-empty-string-as-null-object: true
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: roundandgo.official@gmail.com
+    password: ${APP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   cache:
     type: simple
 
