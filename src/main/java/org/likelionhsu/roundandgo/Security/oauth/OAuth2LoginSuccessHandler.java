@@ -1,6 +1,7 @@
 package org.likelionhsu.roundandgo.Security.oauth;
 
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +15,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Slf4j
@@ -42,16 +41,25 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
 
-        // 프론트엔드로 리다이렉트하며 토큰 전달 (쿼리파라미터 방식)
-//        String redirectUrl = "http://localhost:3000/oauth/kakao?accessToken=" + URLEncoder.encode(accessToken, StandardCharsets.UTF_8)
-//                + "&refreshToken=" + URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
+        // Create HTTP-Only cookies for tokens
+        Cookie accessTokenCookie = new Cookie("accessToken", accessToken);
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true); // Ensure cookies are sent over HTTPS
+        accessTokenCookie.setPath("/");
+        accessTokenCookie.setMaxAge(60 * 60); // 1 hour
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+        Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true); // Ensure cookies are sent over HTTPS
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(60 * 60 * 24 * 7); // 7 days
 
-        String json = "{ \"accessToken\": \"" + accessToken + "\", \"refreshToken\": \"" + refreshToken + "\" }";
-        response.getWriter().write(json);
+        // Add cookies to the response
+        response.addCookie(accessTokenCookie);
+        response.addCookie(refreshTokenCookie);
 
-        //response.sendRedirect(redirectUrl);
+        // Redirect to the frontend
+        String redirectUrl = "https://roundandgo.com/first-main";
+        response.sendRedirect(redirectUrl);
     }
 }
