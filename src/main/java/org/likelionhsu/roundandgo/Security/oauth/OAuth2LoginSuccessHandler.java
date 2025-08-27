@@ -28,10 +28,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
-                                        Authentication authentication) throws IOException {
+                                        Authentication authentication) throws IOException, ServletException {
 
         Map<String, Object> attributes = ((DefaultOAuth2User) authentication.getPrincipal()).getAttributes();
         Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+
         String email = (String) kakaoAccount.get("email");
 
         User user = userRepository.findByEmail(email)
@@ -40,51 +41,25 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
 
-        // 프론트로 돌아갈 URL (쿼리/쿠키/세션 등에서 가져오도록)
-        String returnTo = request.getParameter("returnTo");
-        if (returnTo == null || returnTo.isBlank()) {
-            returnTo = "https://roundandgo.com/first-main";
-        }
+        // Create HTTP-Only cookies for tokens
+        Cookie accessTokenCookie = new Cookie("accessToken", accessToken);
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true); // Ensure cookies are sent over HTTPS
+        accessTokenCookie.setPath("/");
+        accessTokenCookie.setMaxAge(60 * 60); // 1 hour
 
-        // 팝업 창에서 실행할 HTML/JS
-        String frontendOrigin = "https://roundandgo.com"; // 반드시 프론트 정확 도메인
-        String html = """
-      <!doctype html>
-      <html><head><meta charset="utf-8"><title>Login Success</title></head>
-      <body>
-      <script>
-        (function() {
-          try {
-            var data = {
-              type: 'OAUTH_SUCCESS',
-              accessToken: %s,
-              refreshToken: %s,
-              returnTo: %s
-            };
-            if (window.opener && !window.opener.closed) {
-              // 두 번째 인자는 오프너(origin)를 명시해 CSRF 방지
-              window.opener.postMessage(data, '%s');
-            }
-          } catch (e) { /* noop */ }
-          window.close();
-        })();
-      </script>
-      </body></html>
-      """.formatted(
-                jsonString(accessToken),  // 아래 헬퍼 참고
-                jsonString(refreshToken),
-                jsonString(returnTo),
-                frontendOrigin
-        );
+        Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true); // Ensure cookies are sent over HTTPS
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(60 * 60 * 24 * 7); // 7 days
 
-        response.setContentType("text/html; charset=UTF-8");
-        response.getWriter().write(html);
+        // Add cookies to the response
+        response.addCookie(accessTokenCookie);
+        response.addCookie(refreshTokenCookie);
+
+        // Redirect to the frontend
+        String redirectUrl = "https://roundandgo.com/first-main";
+        response.sendRedirect(redirectUrl);
     }
-
-    private String jsonString(String s) {
-        // 간단한 JSON 문자열 이스케이프
-        if (s == null) return "null";
-        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
-    }
-
 }
