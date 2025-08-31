@@ -15,6 +15,8 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Slf4j
@@ -30,10 +32,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
 
+        log.info("OAuth2 로그인 성공 처리 시작");
+
         Map<String, Object> attributes = ((DefaultOAuth2User) authentication.getPrincipal()).getAttributes();
         Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
 
         String email = (String) kakaoAccount.get("email");
+        log.info("카카오 이메일: {}", email);
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("카카오 계정이 존재하지 않습니다."));
@@ -41,25 +46,47 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
 
-        // Create HTTP-Only cookies for tokens
+        log.info("JWT 토큰 생성 완료 - AccessToken 길이: {}", accessToken.length());
+
+        // 방법 1: HTTP-Only 쿠키 (보안성 높음)
         Cookie accessTokenCookie = new Cookie("accessToken", accessToken);
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(true); // Ensure cookies are sent over HTTPS
+        accessTokenCookie.setSecure(false); // 개발 환경에서는 false, 프로덕션에서는 true
         accessTokenCookie.setPath("/");
         accessTokenCookie.setMaxAge(60 * 60); // 1 hour
+        accessTokenCookie.setDomain(".roundandgo.com"); // 도메인 설정 (점 포함)
+        // SameSite 설정
+        response.setHeader("Set-Cookie",
+                String.format("accessToken=%s; Path=/; Max-Age=%d; Domain=.roundandgo.com; SameSite=Lax",
+                        accessToken, 60 * 60));
 
         Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true); // Ensure cookies are sent over HTTPS
+        refreshTokenCookie.setSecure(false); // 개발 환경에서는 false
         refreshTokenCookie.setPath("/");
         refreshTokenCookie.setMaxAge(60 * 60 * 24 * 7); // 7 days
+        refreshTokenCookie.setDomain(".roundandgo.com");
 
-        // Add cookies to the response
+        // 쿠키 추가
         response.addCookie(accessTokenCookie);
         response.addCookie(refreshTokenCookie);
 
-        // Redirect to the frontend
-        String redirectUrl = "https://roundandgo.com/first-main";
-        response.sendRedirect(redirectUrl);
+        // 방법 2: URL 파라미터로도 전송 (백업)
+        String encodedAccessToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
+        String encodedRefreshToken = URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
+
+        // 방법 3: 여러 리다이렉트 URL 시도
+        String[] redirectUrls = {
+                "https://roundandgo.com/first-main?accessToken=" + encodedAccessToken + "&refreshToken=" + encodedRefreshToken,
+                "https://roundandgo.com/first-main",
+                "http://localhost:3000/first-main?accessToken=" + encodedAccessToken + "&refreshToken=" + encodedRefreshToken
+        };
+
+        String finalRedirectUrl = redirectUrls[0]; // 기본값
+
+        log.info("리다이렉트 URL: {}", finalRedirectUrl);
+        log.info("쿠키 설정 완료 - Domain: .roundandgo.com, Path: /");
+
+        response.sendRedirect(finalRedirectUrl);
     }
 }
