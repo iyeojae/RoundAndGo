@@ -1,6 +1,9 @@
 package org.likelionhsu.roundandgo.Controller;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
 import org.likelionhsu.roundandgo.Common.LoginType;
 import org.likelionhsu.roundandgo.Common.Role;
@@ -28,12 +31,14 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
+@Slf4j
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -165,5 +170,94 @@ public class AuthController {
                 .msg("토큰 재발급 완료")
                 .data(new LoginResponseDto(newAccessToken, newRefreshToken))
                 .build());
+    }
+
+    // 🆕 추가된 사용자 정보 조회 엔드포인트
+    @GetMapping("/user")
+    public ResponseEntity<CommonResponse<Map<String, Object>>> getCurrentUser(HttpServletRequest request) {
+        try {
+            log.info("사용자 정보 조회 요청 - 토큰 추출 시작");
+
+            // JWT 토큰에서 사용자 정보 추출
+            String token = extractTokenFromRequest(request);
+            if (token == null) {
+                log.warn("토큰을 찾을 수 없음");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(CommonResponse.<Map<String, Object>>builder()
+                                .statusCode(HttpStatus.UNAUTHORIZED.value())
+                                .msg("토큰이 없습니다")
+                                .build());
+            }
+
+            log.info("토큰 발견 - 길이: {}", token.length());
+
+            // JWT 토큰 유효성 검증
+            if (!jwtProvider.validateToken(token)) {
+                log.warn("유효하지 않은 토큰");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(CommonResponse.<Map<String, Object>>builder()
+                                .statusCode(HttpStatus.UNAUTHORIZED.value())
+                                .msg("유효하지 않은 토큰입니다")
+                                .build());
+            }
+
+            // JWT에서 이메일 추출
+            String email = jwtProvider.getEmailFromToken(token);
+            log.info("토큰에서 추출된 이메일: {}", email);
+
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+
+            // 사용자 정보 반환
+            Map<String, Object> userInfo = new HashMap<>();
+            userInfo.put("id", user.getId());
+            userInfo.put("email", user.getEmail());
+            userInfo.put("nickname", user.getNickname());
+            userInfo.put("loginType", user.getLoginType().toString());
+            userInfo.put("role", user.getRole().toString());
+
+            log.info("사용자 정보 조회 성공: {}", user.getEmail());
+
+            return ResponseEntity.ok(CommonResponse.<Map<String, Object>>builder()
+                    .statusCode(HttpStatus.OK.value())
+                    .msg("사용자 정보 조회 성공")
+                    .data(userInfo)
+                    .build());
+
+        } catch (Exception e) {
+            log.error("사용자 정보 조회 실패: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(CommonResponse.<Map<String, Object>>builder()
+                            .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                            .msg("서버 오류")
+                            .build());
+        }
+    }
+
+    /**
+     * HTTP 요청에서 JWT 토큰 추출
+     * Authorization 헤더 또는 쿠키에서 토큰을 찾습니다
+     */
+    private String extractTokenFromRequest(HttpServletRequest request) {
+        // 1. Authorization 헤더에서 추출
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            log.info("Authorization 헤더에서 토큰 발견");
+            return bearerToken.substring(7);
+        }
+
+        // 2. 쿠키에서 추출
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    log.info("쿠키에서 accessToken 발견");
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        log.warn("토큰을 찾을 수 없음 - Authorization 헤더와 쿠키 모두 확인함");
+        return null;
     }
 }
