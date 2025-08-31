@@ -48,45 +48,35 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         log.info("JWT 토큰 생성 완료 - AccessToken 길이: {}", accessToken.length());
 
-        // 방법 1: HTTP-Only 쿠키 (보안성 높음)
+        // HTTP-Only 쿠키 설정 (프론트엔드 도메인으로 설정)
         Cookie accessTokenCookie = new Cookie("accessToken", accessToken);
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(false); // 개발 환경에서는 false, 프로덕션에서는 true
+        accessTokenCookie.setSecure(true); // HTTPS 환경이므로 true
         accessTokenCookie.setPath("/");
         accessTokenCookie.setMaxAge(60 * 60); // 1 hour
-        accessTokenCookie.setDomain(".roundandgo.com"); // 도메인 설정 (점 포함)
-        // SameSite 설정
-        response.setHeader("Set-Cookie",
-                String.format("accessToken=%s; Path=/; Max-Age=%d; Domain=.roundandgo.com; SameSite=Lax",
-                        accessToken, 60 * 60));
+        accessTokenCookie.setDomain("roundandgo.com"); // 점 제거하고 프론트엔드 도메인
 
         Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(false); // 개발 환경에서는 false
+        refreshTokenCookie.setSecure(true);
         refreshTokenCookie.setPath("/");
         refreshTokenCookie.setMaxAge(60 * 60 * 24 * 7); // 7 days
-        refreshTokenCookie.setDomain(".roundandgo.com");
+        refreshTokenCookie.setDomain("roundandgo.com"); // 점 제거하고 프론트엔드 도메인
 
         // 쿠키 추가
         response.addCookie(accessTokenCookie);
         response.addCookie(refreshTokenCookie);
 
-        // 방법 2: URL 파라미터로도 전송 (백업)
+        // URL 파라미터로도 전송 (백업)
         String encodedAccessToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
         String encodedRefreshToken = URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
 
-        // 방법 3: 여러 리다이렉트 URL 시도
-        String[] redirectUrls = {
-                "https://roundandgo.com/first-main?accessToken=" + encodedAccessToken + "&refreshToken=" + encodedRefreshToken,
-                "https://roundandgo.com/first-main",
-                "http://localhost:3000/first-main?accessToken=" + encodedAccessToken + "&refreshToken=" + encodedRefreshToken
-        };
+        // 프론트엔드로 리다이렉트
+        String redirectUrl = "https://roundandgo.com/first-main?accessToken=" + encodedAccessToken + "&refreshToken=" + encodedRefreshToken;
 
-        String finalRedirectUrl = redirectUrls[0]; // 기본값
+        log.info("리다이렉트 URL: {}", redirectUrl);
+        log.info("쿠키 설정 완료 - Domain: roundandgo.com, Path: /");
 
-        log.info("리다이렉트 URL: {}", finalRedirectUrl);
-        log.info("쿠키 설정 완료 - Domain: .roundandgo.com, Path: /");
-
-        response.sendRedirect(finalRedirectUrl);
+        response.sendRedirect(redirectUrl);
     }
 }
