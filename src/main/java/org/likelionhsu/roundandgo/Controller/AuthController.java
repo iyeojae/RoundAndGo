@@ -19,6 +19,8 @@ import org.likelionhsu.roundandgo.Security.dto.SignupRequestDto;
 import org.likelionhsu.roundandgo.Security.jwt.JwtProvider;
 import org.likelionhsu.roundandgo.Security.jwt.RefreshToken;
 import org.likelionhsu.roundandgo.Service.EmailService;
+import org.likelionhsu.roundandgo.Dto.FindIdRequestDto;
+import org.likelionhsu.roundandgo.Dto.FindIdResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -32,6 +34,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -81,25 +84,54 @@ public class AuthController {
                             .build());
         }
 
+        // 유저 즉시 생성 (이메일 인증 없이)
+        User user = User.builder()
+                .email(dto.getEmail())
+                .password(passwordEncoder.encode(dto.getPassword()))
+                .nickname(dto.getNickname())
+                .loginType(LoginType.EMAIL)
+                .role(Role.ROLE_USER)
+                .isActived(true)
+                .build();
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok(CommonResponse.<Void>builder()
+                .statusCode(HttpStatus.OK.value())
+                .msg("회원가입이 완료되었습니다. 로그인해 주세요.")
+                .build());
+    }
+
+    // 아이디 찾기 - 1단계: 이메일 입력 및 인증 메일 발송
+    @PostMapping("/find-id/request")
+    public ResponseEntity<CommonResponse<Void>> requestFindId(@RequestBody FindIdRequestDto dto) {
+        // 해당 이메일로 가입된 사용자가 있는지 확인
+        if (userRepository.findByEmail(dto.getEmail()).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(CommonResponse.<Void>builder()
+                            .statusCode(HttpStatus.NOT_FOUND.value())
+                            .msg("해당 이메일로 가입된 계정이 없습니다.")
+                            .build());
+        }
+
         // 기존 인증 요청이 있다면 삭제 (중복 방지)
         emailVerificationRepository.deleteByEmail(dto.getEmail());
 
         // 인증 토큰 생성
         String token = UUID.randomUUID().toString();
 
-        // 이메일 인증 정보 임시 저장 (비밀번호는 암호화된 상태로)
+        // 이메일 인증 정보 임시 저장
         EmailVerification verification = EmailVerification.builder()
                 .email(dto.getEmail())
-                .encodedPassword(passwordEncoder.encode(dto.getPassword()))
-                .nickname(dto.getNickname())
                 .token(token)
                 .expiresAt(LocalDateTime.now().plusMinutes(30)) // 30분 유효
+                .isVerified(false)
                 .build();
 
         emailVerificationRepository.save(verification);
 
         // 인증 메일 발송
-        String link = "http://roundandgo.onrender.com/api/auth/verify-email?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+        String link = "http://roundandgo.onrender.com/api/auth/find-id/verify?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
         emailService.sendVerificationEmail(dto.getEmail(), link);
 
         return ResponseEntity.ok(CommonResponse.<Void>builder()
@@ -108,8 +140,9 @@ public class AuthController {
                 .build());
     }
 
-    @GetMapping("/verify-email")
-    public ResponseEntity<CommonResponse<Void>> verifyEmail(@RequestParam String token) {
+    // 아이디 찾기 - 2단계: 이메일 링크 클릭으로 인증
+    @GetMapping("/find-id/verify")
+    public ResponseEntity<CommonResponse<Void>> verifyFindIdEmail(@RequestParam String token) {
         EmailVerification verification = emailVerificationRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 토큰입니다."));
 
@@ -121,22 +154,56 @@ public class AuthController {
                             .build());
         }
 
-        // 유저 생성
-        User user = User.builder()
-                .email(verification.getEmail())
-                .password(verification.getEncodedPassword())
-                .nickname(verification.getNickname())
-                .loginType(LoginType.EMAIL)
-                .role(Role.ROLE_USER)
-                .isActived(true)
-                .build();
-
-        userRepository.save(user);
-        emailVerificationRepository.delete(verification); // 인증 후 삭제
+        // 이메일 인증 완료 처리
+        verification.setVerified(true);
+        emailVerificationRepository.save(verification);
 
         return ResponseEntity.ok(CommonResponse.<Void>builder()
                 .statusCode(HttpStatus.OK.value())
-                .msg("이메일 인증이 완료되었습니다. 이제 로그인할 수 있습니다.")
+                .msg("이메일 인증이 완료되었습니다. 사이트로 돌아가서 확인 버튼을 클릭해 주세요.")
+                .build());
+    }
+
+    // 아이디 찾기 - 3단계: 사이트에서 확인 버튼 클릭으로 아이디 조회
+    @PostMapping("/find-id/confirm")
+    public ResponseEntity<CommonResponse<FindIdResponseDto>> confirmFindId(@RequestBody FindIdRequestDto dto) {
+        // 이메일 인증이 완료된 요청인지 확인
+        EmailVerification verification = emailVerificationRepository.findByEmailAndIsVerified(dto.getEmail(), true)
+                .orElse(null);
+
+        if (verification == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(CommonResponse.<FindIdResponseDto>builder()
+                            .statusCode(HttpStatus.BAD_REQUEST.value())
+                            .msg("이메일 인증이 완료되지 않았습니다.")
+                            .build());
+        }
+
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(CommonResponse.<FindIdResponseDto>builder()
+                            .statusCode(HttpStatus.BAD_REQUEST.value())
+                            .msg("인증이 만료되었습니다. 다시 시도해 주세요.")
+                            .build());
+        }
+
+        // 해당 이메일로 가입된 사용자 정보 조회
+        User user = userRepository.findByEmail(dto.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 아이디(이메일) 정보 반환
+        FindIdResponseDto response = FindIdResponseDto.builder()
+                .foundIds(List.of(user.getEmail()))
+                .message("아이디를 찾았습니다.")
+                .build();
+
+        // 인증 정보 삭제 (1회용)
+        emailVerificationRepository.delete(verification);
+
+        return ResponseEntity.ok(CommonResponse.<FindIdResponseDto>builder()
+                .statusCode(HttpStatus.OK.value())
+                .msg("아이디 찾기가 완료되었습니다.")
+                .data(response)
                 .build());
     }
 
