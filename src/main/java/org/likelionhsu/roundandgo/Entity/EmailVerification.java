@@ -22,11 +22,9 @@ public class EmailVerification {
 
     private String email;
 
-    private String encodedPassword;
-
-    private String nickname;
-
     private String token;
 
     private LocalDateTime expiresAt;
+
+    private boolean isVerified; // 이메일 인증 완료 여부
 }
