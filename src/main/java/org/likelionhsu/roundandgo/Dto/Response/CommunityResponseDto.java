@@ -1,10 +1,11 @@
 package org.likelionhsu.roundandgo.Dto.Response;
 
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommunityCategory;
 import org.likelionhsu.roundandgo.Entity.Community;
+
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -14,6 +15,7 @@ public class CommunityResponseDto {
     private String content; // 게시글 내용
     private String author; // 작성자 이름
     private CommunityCategory category; // 게시글 카테고리 (ENUM 타입)
+    private LocalDateTime createdAt; // 작성일시
 
     public CommunityResponseDto(Community community) {
         this.id = community.getId();
@@ -21,5 +23,6 @@ public class CommunityResponseDto {
         this.content = community.getContent();
         this.author = community.getAuthor();
         this.category = community.getCategory();
+        this.createdAt = community.getCreatedAt();
     }
 }
