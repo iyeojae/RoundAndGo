@@ -38,6 +38,7 @@ public class OpenAiApiClient {
 
             OpenAiResponseDto response = openAiWebClient
                     .post()
+                    .uri("/chat/completions")  // 엔드포인트 명시적으로 추가
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(OpenAiResponseDto.class)

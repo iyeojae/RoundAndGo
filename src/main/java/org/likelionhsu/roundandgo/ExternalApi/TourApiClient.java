@@ -1,6 +1,7 @@
 package org.likelionhsu.roundandgo.ExternalApi;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.roundandgo.Dto.Api.TourApiGolfDto;
 import org.likelionhsu.roundandgo.Dto.Api.TourItem;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@Slf4j
 public class TourApiClient {
 
     private final WebClient webClient;
@@ -58,26 +60,32 @@ public class TourApiClient {
         List<TourItem> result = new ArrayList<>();
 
         for (int contentTypeId : contentTypeIds) {
-            TourApiResponseGeneral response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/areaBasedList2")
-                            .queryParam("serviceKey", apiKey)
-                            .queryParam("MobileOS", "ETC")
-                            .queryParam("MobileApp", "RoundAndGo")
-                            .queryParam("_type", "json")
-                            .queryParam("numOfRows", 100)
-                            .queryParam("areaCode", areaCode)
-                            .queryParam("sigunguCode", sigunguCode)
-                            .queryParam("contentTypeId", contentTypeId)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(TourApiResponseGeneral.class)
-                    .block();
+            try {
+                TourApiResponseGeneral response = webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/areaBasedList2")
+                                .queryParam("serviceKey", apiKey)
+                                .queryParam("MobileOS", "ETC")
+                                .queryParam("MobileApp", "RoundAndGo")
+                                .queryParam("_type", "json")
+                                .queryParam("numOfRows", 100)
+                                .queryParam("areaCode", areaCode)
+                                .queryParam("sigunguCode", sigunguCode)
+                                .queryParam("contentTypeId", contentTypeId)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(TourApiResponseGeneral.class)
+                        .block();
 
-            if (response != null && response.getResponse() != null &&
-                    response.getResponse().getBody() != null &&
-                    response.getResponse().getBody().getItems() != null) {
-                result.addAll(response.getResponse().getBody().getItems().getItem());
+                if (response != null && response.getResponse() != null &&
+                        response.getResponse().getBody() != null &&
+                        response.getResponse().getBody().getItems() != null &&
+                        response.getResponse().getBody().getItems().getItem() != null) {
+                    result.addAll(response.getResponse().getBody().getItems().getItem());
+                }
+            } catch (Exception e) {
+                // JSON 파싱 오류나 기타 오류 발생 시 해당 contentTypeId는 건너뛰고 계속 진행
+                log.warn("Tour API 호출 중 오류 발생 - contentTypeId: {}, error: {}", contentTypeId, e.getMessage());
             }
         }
 
