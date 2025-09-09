@@ -64,6 +64,7 @@ public class GolfCourseService {
         String normalizedSearch = normalizeGolfName(name); // 검색어도 정규화
         return golfCourseRepository.findAll().stream()
                 .filter(course -> isGolfNameMatch(course.getName(), normalizedSearch))
+                .filter(course -> isJejuGolfCourse(course.getAddress())) // 제주도 골프장만 필터링
                 .map(GolfCourseMapper::toResponseDto)
                 .collect(Collectors.toList());
     }
@@ -119,5 +120,17 @@ public class GolfCourseService {
         if (address == null) return "";
         // 공백 및 특수문자 제거, 소문자로 변환
         return address.replaceAll("\\s+", "").replaceAll("[^a-zA-Z0-9가-힣]", "").toLowerCase();
+    }
+
+    /**
+     * 제주도 골프장인지 확인하는 메소드
+     * 주소의 0~6번째 문자가 "제주특별자치도"인지 확인
+     * TODO: 전국구 서비스 시 이 필터링 로직 제거 필요
+     */
+    private boolean isJejuGolfCourse(String address) {
+        if (address == null || address.length() < 7) {
+            return false;
+        }
+        return address.substring(0, 7).equals("제주특별자치도");
     }
 }
