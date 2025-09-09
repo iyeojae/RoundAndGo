@@ -1,4 +1,4 @@
-package org.likelionhsu.roundandgo.Dto;
+package org.likelionhsu.roundandgo.Dto.Request;
 
 import lombok.Getter;
 import lombok.Setter;

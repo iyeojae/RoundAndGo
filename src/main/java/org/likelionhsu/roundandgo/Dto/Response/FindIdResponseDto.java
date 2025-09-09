@@ -1,4 +1,4 @@
-package org.likelionhsu.roundandgo.Dto;
+package org.likelionhsu.roundandgo.Dto.Response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
