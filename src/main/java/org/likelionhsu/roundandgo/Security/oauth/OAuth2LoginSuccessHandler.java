@@ -72,7 +72,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String encodedRefreshToken = URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
 
         // 프론트엔드로 리다이렉트
-        String redirectUrl = "https://roundandgo.com/first-main?accessToken=" + encodedAccessToken + "&refreshToken=" + encodedRefreshToken;
+        String redirectUrl = "http://localhost:3000/first-main?accessToken=" + encodedAccessToken + "&refreshToken=" + encodedRefreshToken;
 
         log.info("리다이렉트 URL: {}", redirectUrl);
         log.info("쿠키 설정 완료 - Domain: roundandgo.com, Path: /");
