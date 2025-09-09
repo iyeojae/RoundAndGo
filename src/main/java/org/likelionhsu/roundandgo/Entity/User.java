@@ -26,6 +26,7 @@ public class User extends Timestamped {
     @Column(nullable = false)
     private LoginType loginType;
 
+    @Column(unique = true)
     private String nickname;
 
     private String profileImage;

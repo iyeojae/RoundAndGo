@@ -19,8 +19,10 @@ import org.likelionhsu.roundandgo.Security.dto.SignupRequestDto;
 import org.likelionhsu.roundandgo.Security.jwt.JwtProvider;
 import org.likelionhsu.roundandgo.Security.jwt.RefreshToken;
 import org.likelionhsu.roundandgo.Service.EmailService;
-import org.likelionhsu.roundandgo.Dto.Request.FindIdRequestDto;
-import org.likelionhsu.roundandgo.Dto.Response.FindIdResponseDto;
+import org.likelionhsu.roundandgo.Dto.Request.PasswordResetRequestDto;
+import org.likelionhsu.roundandgo.Dto.Request.PasswordChangeRequestDto;
+import org.likelionhsu.roundandgo.Dto.Request.NicknameCheckRequestDto;
+import org.likelionhsu.roundandgo.Dto.Response.NicknameCheckResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -34,7 +36,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -102,9 +103,9 @@ public class AuthController {
                 .build());
     }
 
-    // 아이디 찾기 - 1단계: 이메일 입력 및 인증 메일 발송
-    @PostMapping("/find-id/request")
-    public ResponseEntity<CommonResponse<Void>> requestFindId(@RequestBody FindIdRequestDto dto) {
+    // 비밀번호 재설정 - 1단계: 이메일 입력 및 인증 메일 발송
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<CommonResponse<Void>> requestPasswordReset(@RequestBody PasswordResetRequestDto dto) {
         // 해당 이메일로 가입된 사용자가 있는지 확인
         if (userRepository.findByEmail(dto.getEmail()).isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -131,18 +132,18 @@ public class AuthController {
         emailVerificationRepository.save(verification);
 
         // 인증 메일 발송
-        String link = "http://roundandgo.onrender.com/api/auth/find-id/verify?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+        String link = "http://roundandgo.onrender.com/api/auth/password-reset/verify?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
         emailService.sendVerificationEmail(dto.getEmail(), link);
 
         return ResponseEntity.ok(CommonResponse.<Void>builder()
                 .statusCode(HttpStatus.OK.value())
-                .msg("인증 메일이 전송되었습니다. 이메일을 확인해 주세요.")
+                .msg("비밀번호 재설정을 위한 인증 메일이 전송되었습니다. 이메일을 확인해 주세요.")
                 .build());
     }
 
-    // 아이디 찾기 - 2단계: 이메일 링크 클릭으로 인증
-    @GetMapping("/find-id/verify")
-    public ResponseEntity<CommonResponse<Void>> verifyFindIdEmail(@RequestParam String token) {
+    // 비밀번호 재설정 - 2단계: 이메일 링크 클릭으로 인증
+    @GetMapping("/password-reset/verify")
+    public ResponseEntity<CommonResponse<Void>> verifyPasswordResetEmail(@RequestParam String token) {
         EmailVerification verification = emailVerificationRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 토큰입니다."));
 
@@ -160,20 +161,20 @@ public class AuthController {
 
         return ResponseEntity.ok(CommonResponse.<Void>builder()
                 .statusCode(HttpStatus.OK.value())
-                .msg("이메일 인증이 완료되었습니다. 사이트로 돌아가서 확인 버튼을 클릭해 주세요.")
+                .msg("이메일 인증이 완료되었습니다. 사이트로 돌아가서 새 비밀번호를 설정해 주세요.")
                 .build());
     }
 
-    // 아이디 찾기 - 3단계: 사이트에서 확인 버튼 클릭으로 아이디 조회
-    @PostMapping("/find-id/confirm")
-    public ResponseEntity<CommonResponse<FindIdResponseDto>> confirmFindId(@RequestBody FindIdRequestDto dto) {
+    // 비밀번호 재설정 - 3단계: 사이트에서 새 비밀번호 입력으로 비밀번호 변경
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<CommonResponse<Void>> confirmPasswordReset(@RequestBody PasswordChangeRequestDto dto) {
         // 이메일 인증이 완료된 요청인지 확인
         EmailVerification verification = emailVerificationRepository.findByEmailAndIsVerified(dto.getEmail(), true)
                 .orElse(null);
 
         if (verification == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(CommonResponse.<FindIdResponseDto>builder()
+                    .body(CommonResponse.<Void>builder()
                             .statusCode(HttpStatus.BAD_REQUEST.value())
                             .msg("이메일 인증이 완료되지 않았습니다.")
                             .build());
@@ -181,7 +182,7 @@ public class AuthController {
 
         if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(CommonResponse.<FindIdResponseDto>builder()
+                    .body(CommonResponse.<Void>builder()
                             .statusCode(HttpStatus.BAD_REQUEST.value())
                             .msg("인증이 만료되었습니다. 다시 시도해 주세요.")
                             .build());
@@ -191,19 +192,16 @@ public class AuthController {
         User user = userRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // 아이디(이메일) 정보 반환
-        FindIdResponseDto response = FindIdResponseDto.builder()
-                .foundIds(List.of(user.getEmail()))
-                .message("아이디를 찾았습니다.")
-                .build();
+        // 비밀번호 변경
+        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        userRepository.save(user);
 
         // 인증 정보 삭제 (1회용)
         emailVerificationRepository.delete(verification);
 
-        return ResponseEntity.ok(CommonResponse.<FindIdResponseDto>builder()
+        return ResponseEntity.ok(CommonResponse.<Void>builder()
                 .statusCode(HttpStatus.OK.value())
-                .msg("아이디 찾기가 완료되었습니다.")
-                .data(response)
+                .msg("비밀번호가 성공적으로 변경되었습니다.")
                 .build());
     }
 
@@ -297,6 +295,40 @@ public class AuthController {
                     .body(CommonResponse.<Map<String, Object>>builder()
                             .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
                             .msg("서버 오류")
+                            .build());
+        }
+    }
+
+    // 닉네임 중복 확인 엔드포인트
+    @PostMapping("/check-nickname")
+    public ResponseEntity<CommonResponse<NicknameCheckResponseDto>> checkNickname(@RequestBody NicknameCheckRequestDto requestDto) {
+        try {
+            String nickname = requestDto.getNickname();
+
+            // 닉네임 중복 확인
+            boolean isAvailable = userRepository.findByNickname(nickname).isEmpty();
+
+            NicknameCheckResponseDto responseDto = NicknameCheckResponseDto.builder()
+                    .isAvailable(isAvailable)
+                    .message(isAvailable ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다.")
+                    .build();
+
+            return ResponseEntity.ok(CommonResponse.<NicknameCheckResponseDto>builder()
+                    .statusCode(HttpStatus.OK.value())
+                    .msg(isAvailable ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다.")
+                    .data(responseDto)
+                    .build());
+
+        } catch (Exception e) {
+            log.error("닉네임 중복 확인 중 오류 발생: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(CommonResponse.<NicknameCheckResponseDto>builder()
+                            .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                            .msg("서버 오류가 발생했습니다.")
+                            .data(NicknameCheckResponseDto.builder()
+                                    .isAvailable(false)
+                                    .message("서버 오류가 발생했습니다.")
+                                    .build())
                             .build());
         }
     }
