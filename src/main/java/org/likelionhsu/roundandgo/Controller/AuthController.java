@@ -31,6 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -104,6 +105,7 @@ public class AuthController {
     }
 
     // 비밀번호 재설정 - 1단계: 이메일 입력 및 인증 메일 발송
+    @Transactional
     @PostMapping("/password-reset/request")
     public ResponseEntity<CommonResponse<Void>> requestPasswordReset(@RequestBody PasswordResetRequestDto dto) {
         // 해당 이메일로 가입된 사용자가 있는지 확인
@@ -166,6 +168,7 @@ public class AuthController {
     }
 
     // 비밀번호 재설정 - 3단계: 사이트에서 새 비밀번호 입력으로 비밀번호 변경
+    @Transactional
     @PostMapping("/password-reset/confirm")
     public ResponseEntity<CommonResponse<Void>> confirmPasswordReset(@RequestBody PasswordChangeRequestDto dto) {
         // 이메일 인증이 완료된 요청인지 확인
