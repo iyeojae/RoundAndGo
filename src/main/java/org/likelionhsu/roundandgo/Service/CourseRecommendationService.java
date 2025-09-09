@@ -11,6 +11,7 @@ import org.likelionhsu.roundandgo.Entity.*;
 import org.likelionhsu.roundandgo.ExternalApi.TourApiClient;
 import org.likelionhsu.roundandgo.ExternalApi.OpenAiApiClient;
 import org.likelionhsu.roundandgo.Mapper.CourseTypeMapper;
+import org.likelionhsu.roundandgo.Mapper.RegionCodeMapper;
 import org.likelionhsu.roundandgo.Repository.CourseRecommendationRepository;
 import org.likelionhsu.roundandgo.Repository.GolfCourseRepository;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,7 @@ public class CourseRecommendationService {
     private final TourApiClient tourApiClient;
     private final ScheduleService scheduleService;
     private final OpenAiApiClient openAiApiClient; // GPT API 클라이언트 추가
+    private final RegionCodeMapper regionCodeMapper; // 지역 코드 매퍼 추가
 
     public CourseRecommendationResponseDto createRecommendation(User user, Long golfCourseId, String teeOffTime, String courseType) {
 
@@ -527,15 +529,46 @@ public class CourseRecommendationService {
     }
 
     public List<RecommendedPlaceDto> getPlaces(GolfCourse golfCourse, int contentTypeId) {
-        return tourApiClient.fetchNearbyItems(golfCourse.getLongitude(), golfCourse.getLatitude(), List.of(contentTypeId))
+        // 골프장 주소에서 지역 정보 추출
+        String address = golfCourse.getAddress();
+
+        // 제주도로 고정 (현재 프로젝트는 제주도만 서비스)
+        int areaCode = regionCodeMapper.getAreaCode("제주특별자치도");
+        int sigunguCode = 0; // 제주도 전체 조회
+
+        // 주소에서 시군구 정보 추출하여 더 정확한 지역 코드 설정
+        if (address.contains("제주시")) {
+            sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "제주시");
+        } else if (address.contains("서귀포시")) {
+            sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "서귀포시");
+        }
+
+        // 지역 기반 조회로 변경
+        return tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(contentTypeId))
                 .stream()
                 .map(this::toRecommendedPlace)
                 .toList();
     }
 
     private List<RecommendedPlaceDto> getFilteredStays(GolfCourse golfCourse, String courseType) {
+        // 골프장 주소에서 지역 정보 추출
+        String address = golfCourse.getAddress();
+
+        // 제주도로 고정
+        int areaCode = regionCodeMapper.getAreaCode("제주특별자치도");
+        int sigunguCode = 0; // 제주도 전체 조회
+
+        // 주소에서 시군구 정보 추출
+        if (address.contains("제주시")) {
+            sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "제주시");
+        } else if (address.contains("서귀포시")) {
+            sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "서귀포시");
+        }
+
         List<String> cat3Codes = CourseTypeMapper.getCat3Codes(courseType);
-        return tourApiClient.fetchNearbyItems(golfCourse.getLongitude(), golfCourse.getLatitude(), List.of(32))
+
+        // 지역 기반 조회로 변경
+        return tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(32))
                 .stream()
                 .filter(item -> cat3Codes.contains(item.getCat3()))
                 .map(this::toRecommendedPlace)
@@ -618,4 +651,3 @@ public class CourseRecommendationService {
         }
     }
 }
-
