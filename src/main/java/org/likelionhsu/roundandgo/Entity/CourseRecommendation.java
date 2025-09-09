@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.likelionhsu.roundandgo.Dto.Api.RecommendedPlaceDto;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,11 @@ public class CourseRecommendation {
 
     private LocalTime teeOffTime;
     private LocalTime endTime;
+
+    // 2일 연속 골프장 방문을 위한 추가 필드
+    private LocalDate startDate; // 여행 시작 날짜
+    private Integer travelDays; // 여행 기간 (1일 또는 2일)
+    private Integer dayNumber; // 몇일차인지 (1일차, 2일차)
 
     @ManyToOne(fetch = FetchType.LAZY)
     private GolfCourse golfCourse;
@@ -52,13 +58,57 @@ public class CourseRecommendation {
         course.courseTypeLabel = resolveLabel(courseType);
         course.teeOffTime = teeOffTime;
         course.endTime = endTime;
+        // 기본값 설정 (1일 여행)
+        course.startDate = LocalDate.now();
+        course.travelDays = 1;
+        course.dayNumber = 1;
+
         for (String orderType : determineOrder(endTime)) {
             RecommendationOrder order = new RecommendationOrder();
             order.setType(orderType);
             order.setCourseRecommendation(course);
             course.recommendationOrders.add(order);
         }
-        course.user = user; // Optional, if you want to associate with a user
+        course.user = user;
+
+        for (RecommendedPlaceDto dto : placeDtos) {
+            if (dto != null) {
+                course.recommendedPlaces.add(RecommendedPlace.of(dto, course));
+            }
+        }
+
+        return course;
+    }
+
+    // 2일 연속 골프장 방문을 위한 새로운 create 메서드
+    public static CourseRecommendation create(
+            GolfCourse golfCourse,
+            String courseType,
+            LocalTime teeOffTime,
+            LocalTime endTime,
+            List<RecommendedPlaceDto> placeDtos,
+            User user,
+            LocalDate startDate,
+            Integer travelDays,
+            Integer dayNumber) {
+
+        CourseRecommendation course = new CourseRecommendation();
+        course.golfCourse = golfCourse;
+        course.courseType = courseType;
+        course.courseTypeLabel = resolveLabel(courseType);
+        course.teeOffTime = teeOffTime;
+        course.endTime = endTime;
+        course.startDate = startDate;
+        course.travelDays = travelDays;
+        course.dayNumber = dayNumber;
+
+        for (String orderType : determineOrder(endTime)) {
+            RecommendationOrder order = new RecommendationOrder();
+            order.setType(orderType);
+            order.setCourseRecommendation(course);
+            course.recommendationOrders.add(order);
+        }
+        course.user = user;
 
         for (RecommendedPlaceDto dto : placeDtos) {
             if (dto != null) {
