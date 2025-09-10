@@ -3,10 +3,10 @@ package org.likelionhsu.roundandgo.ExternalApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.roundandgo.Common.Config.OpenAiConfig;
-import org.likelionhsu.roundandgo.Dto.Api.OpenAiRequestDto;
-import org.likelionhsu.roundandgo.Dto.Api.OpenAiResponseDto;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.likelionhsu.roundandgo.Dto.Api.OpenAiRequestDto;
+import org.likelionhsu.roundandgo.Dto.Api.OpenAiResponseDto;
 
 import java.util.List;
 
@@ -38,14 +38,14 @@ public class OpenAiApiClient {
 
             OpenAiResponseDto response = openAiWebClient
                     .post()
-                    .uri("/chat/completions")  // 엔드포인트 명시적으로 추가
+                    .uri("/chat/completions")
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(OpenAiResponseDto.class)
                     .block();
 
             if (response != null && !response.getChoices().isEmpty()) {
-                return response.getChoices().get(0).getMessage().getContent();
+                return response.getChoices().getFirst().getMessage().getContent();
             }
 
             return "추천 코스를 생성할 수 없습니다.";
