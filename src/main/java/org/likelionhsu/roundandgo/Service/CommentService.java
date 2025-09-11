@@ -106,4 +106,11 @@ public class CommentService {
                 .map(comment -> new CommentResponseDto(comment, true)) // isReply = true
                 .toList();
     }
+
+    public List<CommentResponseDto> getCommentsByPostId(Long postId) {
+        List<Comment> comments = commentRepository.findByCommunityIdAndParentCommentIdIsNull(postId);
+        return comments.stream()
+                .map(comment -> new CommentResponseDto(comment, false)) // isReply = false
+                .toList();
+    }
 }

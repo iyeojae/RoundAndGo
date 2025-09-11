@@ -94,4 +94,16 @@ public class CommentController {
                         .build()
         );
     }
+
+    @GetMapping("/post/{postId}")
+    public ResponseEntity<CommonResponse<List<CommentResponseDto>>> getCommentsByPostId(@PathVariable Long postId) {
+        List<CommentResponseDto> comments = commentService.getCommentsByPostId(postId);
+        return ResponseEntity.ok(
+                CommonResponse.<List<CommentResponseDto>>builder()
+                        .statusCode(200)
+                        .msg("게시글 댓글 조회 성공")
+                        .data(comments)
+                        .build()
+        );
+    }
 }
