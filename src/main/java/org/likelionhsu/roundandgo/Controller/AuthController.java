@@ -21,6 +21,7 @@ import org.likelionhsu.roundandgo.Security.jwt.RefreshToken;
 import org.likelionhsu.roundandgo.Service.EmailService;
 import org.likelionhsu.roundandgo.Dto.Request.PasswordResetRequestDto;
 import org.likelionhsu.roundandgo.Dto.Request.PasswordChangeRequestDto;
+import org.likelionhsu.roundandgo.Dto.Request.PasswordResetVerifyRequestDto;
 import org.likelionhsu.roundandgo.Dto.Request.NicknameCheckRequestDto;
 import org.likelionhsu.roundandgo.Dto.Response.NicknameCheckResponseDto;
 import org.springframework.http.HttpStatus;
@@ -167,7 +168,46 @@ public class AuthController {
                 .build());
     }
 
-    // 비밀번호 재설정 - 3단계: 사이트에서 새 비밀번호 입력으로 비밀번호 변경
+    // 비밀번호 재설정 - 3-1단계: 이메일 인증 확인
+    @Transactional
+    @PostMapping("/password-reset/confirm-email")
+    public ResponseEntity<CommonResponse<Void>> confirmPasswordResetEmail(@RequestBody PasswordResetVerifyRequestDto dto) {
+        // 해당 이메일로 가입된 사용자가 있는지 확인
+        if (userRepository.findByEmail(dto.getEmail()).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(CommonResponse.<Void>builder()
+                            .statusCode(HttpStatus.NOT_FOUND.value())
+                            .msg("해당 이메일로 가입된 계정이 없습니다.")
+                            .build());
+        }
+
+        // 이메일 인증 정보 조회
+        EmailVerification verification = emailVerificationRepository.findByEmailAndIsVerified(dto.getEmail(), true)
+                .orElse(null);
+
+        if (verification == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(CommonResponse.<Void>builder()
+                            .statusCode(HttpStatus.BAD_REQUEST.value())
+                            .msg("이메일 인증이 완료되지 않았습니다.")
+                            .build());
+        }
+
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(CommonResponse.<Void>builder()
+                            .statusCode(HttpStatus.BAD_REQUEST.value())
+                            .msg("인증이 만료되었습니다. 다시 시도해 주세요.")
+                            .build());
+        }
+
+        return ResponseEntity.ok(CommonResponse.<Void>builder()
+                .statusCode(HttpStatus.OK.value())
+                .msg("이메일 인증이 확인되었습니다. 새 비밀번호를 입력해 주세요.")
+                .build());
+    }
+
+    // 비밀번호 재설정 - 3-2단계: 새 비밀번호 입력으로 비밀번호 변경
     @Transactional
     @PostMapping("/password-reset/confirm")
     public ResponseEntity<CommonResponse<Void>> confirmPasswordReset(@RequestBody PasswordChangeRequestDto dto) {

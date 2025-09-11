@@ -108,9 +108,9 @@ public class CommentService {
     }
 
     public List<CommentResponseDto> getCommentsByPostId(Long postId) {
-        List<Comment> comments = commentRepository.findByCommunityIdAndParentCommentIdIsNull(postId);
+        List<Comment> comments = commentRepository.findByCommunityId(postId);
         return comments.stream()
-                .map(comment -> new CommentResponseDto(comment, false)) // isReply = false
+                .map(comment -> new CommentResponseDto(comment, comment.getParentCommentId() != null)) // 대댓글 여부 자동 판단
                 .toList();
     }
 }
