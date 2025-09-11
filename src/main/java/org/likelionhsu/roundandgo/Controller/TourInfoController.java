@@ -112,4 +112,72 @@ public class TourInfoController {
 
         return ResponseEntity.ok(tourInfoService.fetchNearByAccommodationsByCourseType(mapX, mapY, courseType));
     }
+
+    // 골프장 ID 기반 지역 관광지 조회 엔드포인트들
+    @GetMapping("/by-golf-course")
+    public ResponseEntity<CommonResponse<TourInfoResponseDto>> getTourInfoByGolfCourse(
+            @RequestParam Long golfCourseId) {
+
+        TourInfoResponseDto response = tourInfoService.getTourInfosByGolfCourse(golfCourseId);
+
+        return ResponseEntity.ok(
+                CommonResponse.<TourInfoResponseDto>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("골프장 지역 관광 정보 조회 성공")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @GetMapping("/by-golf-course/attractions")
+    public ResponseEntity<List<TourItem>> fetchTourAttractionsByGolfCourse(
+            @RequestParam Long golfCourseId) {
+        return ResponseEntity.ok(tourInfoService.fetchTourAttractionsByGolfCourse(golfCourseId));
+    }
+
+    @GetMapping("/by-golf-course/restaurants")
+    public ResponseEntity<List<TourItem>> fetchRestaurantsByGolfCourse(
+            @RequestParam Long golfCourseId) {
+        return ResponseEntity.ok(tourInfoService.fetchRestaurantsByGolfCourse(golfCourseId));
+    }
+
+    @GetMapping("/by-golf-course/accommodations")
+    public ResponseEntity<List<TourItem>> fetchAccommodationsByGolfCourse(
+            @RequestParam Long golfCourseId) {
+        return ResponseEntity.ok(tourInfoService.fetchAccommodationsByGolfCourse(golfCourseId));
+    }
+
+    // 골프장 ID 기반 좌표 주변 관광지 조회 엔드포인트들
+    @GetMapping("/nearby-golf-course")
+    public ResponseEntity<CommonResponse<TourInfoResponseDto>> getNearbyItemsByGolfCourse(
+            @RequestParam Long golfCourseId) {
+
+        TourInfoResponseDto response = tourInfoService.getNearbyItemsByGolfCourse(golfCourseId);
+
+        return ResponseEntity.ok(
+                CommonResponse.<TourInfoResponseDto>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("골프장 주변 관광 정보 조회 성공")
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @GetMapping("/nearby-golf-course/attractions")
+    public ResponseEntity<List<TourItem>> fetchNearByAttractionsByGolfCourse(
+            @RequestParam Long golfCourseId) {
+        return ResponseEntity.ok(tourInfoService.fetchNearByAttractionsByGolfCourse(golfCourseId));
+    }
+
+    @GetMapping("/nearby-golf-course/restaurants")
+    public ResponseEntity<List<TourItem>> fetchNearByRestaurantsByGolfCourse(
+            @RequestParam Long golfCourseId) {
+        return ResponseEntity.ok(tourInfoService.fetchNearByRestaurantsByGolfCourse(golfCourseId));
+    }
+
+    @GetMapping("/nearby-golf-course/accommodations")
+    public ResponseEntity<List<TourItem>> fetchNearByAccommodationsByGolfCourse(
+            @RequestParam Long golfCourseId) {
+        return ResponseEntity.ok(tourInfoService.fetchNearByAccommodationsByGolfCourse(golfCourseId));
+    }
 }

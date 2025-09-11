@@ -3,9 +3,11 @@ package org.likelionhsu.roundandgo.Service;
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Dto.Response.TourInfoResponseDto;
 import org.likelionhsu.roundandgo.Dto.Api.TourItem;
+import org.likelionhsu.roundandgo.Entity.GolfCourse;
 import org.likelionhsu.roundandgo.ExternalApi.TourApiClient;
 import org.likelionhsu.roundandgo.Mapper.CourseTypeMapper;
 import org.likelionhsu.roundandgo.Mapper.RegionCodeMapper;
+import org.likelionhsu.roundandgo.Repository.GolfCourseRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,7 +17,8 @@ import java.util.List;
 public class TourInfoService {
 
     private final TourApiClient tourApiClient;
-    private final RegionCodeMapper regionCodeMapper; // 지역명 -> 코드 매핑 클래스
+    private final RegionCodeMapper regionCodeMapper;
+    private final GolfCourseRepository golfCourseRepository;
 
     /**
      * 특정 지역의 관광 정보(관광지, 숙소, 음식점)를 조회합니다.
@@ -147,5 +150,148 @@ public class TourInfoService {
         return all.stream()
                 .filter(item -> cat3Filter.contains(item.getCat3()))
                 .toList();
+    }
+
+    /**
+     * 골프장 ID를 기반으로 해당 지역의 전체 관광 정보를 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 관광 정보 DTO
+     */
+    public TourInfoResponseDto getTourInfosByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        // 골프장 주소를 파싱하여 지역 정보 추출
+        String[] addressParts = parseAddress(golfCourse.getAddress());
+        String province = addressParts[0];
+        String city = addressParts[1];
+
+        return getTourInfos(province, city);
+    }
+
+    /**
+     * 골프장 ID를 기반으로 해당 지역의 관광지를 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 관광지 리스트
+     */
+    public List<TourItem> fetchTourAttractionsByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        String[] addressParts = parseAddress(golfCourse.getAddress());
+        String province = addressParts[0];
+        String city = addressParts[1];
+
+        return fetchTourAttractions(province, city);
+    }
+
+    /**
+     * 골프장 ID를 기반으로 해당 지역의 음식점을 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 음식점 리스트
+     */
+    public List<TourItem> fetchRestaurantsByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        String[] addressParts = parseAddress(golfCourse.getAddress());
+        String province = addressParts[0];
+        String city = addressParts[1];
+
+        return fetchRestaurants(province, city);
+    }
+
+    /**
+     * 골프장 ID를 기반으로 해당 지역의 숙소를 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 숙소 리스트
+     */
+    public List<TourItem> fetchAccommodationsByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        String[] addressParts = parseAddress(golfCourse.getAddress());
+        String province = addressParts[0];
+        String city = addressParts[1];
+
+        return fetchAccommodations(province, city);
+    }
+
+    /**
+     * 골프장 ID를 기반으로 골프장 좌표 주변의 전체 관광 정보를 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 관광 정보 DTO
+     */
+    public TourInfoResponseDto getNearbyItemsByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        return fetchNearbyItems(golfCourse.getLongitude(), golfCourse.getLatitude());
+    }
+
+    /**
+     * 골프장 ID를 기반으로 골프장 좌표 주변의 관광지를 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 관광지 리스트
+     */
+    public List<TourItem> fetchNearByAttractionsByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        return fetchNearByAttractions(golfCourse.getLongitude(), golfCourse.getLatitude());
+    }
+
+    /**
+     * 골프장 ID를 기반으로 골프장 좌표 주변의 음식점을 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 음식점 리스트
+     */
+    public List<TourItem> fetchNearByRestaurantsByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        return fetchNearByRestaurants(golfCourse.getLongitude(), golfCourse.getLatitude());
+    }
+
+    /**
+     * 골프장 ID를 기반으로 골프장 좌표 주변의 숙소를 조회합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 숙소 리스트
+     */
+    public List<TourItem> fetchNearByAccommodationsByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        return fetchNearByAccommodations(golfCourse.getLongitude(), golfCourse.getLatitude());
+    }
+
+    /**
+     * 주소를 파싱하여 도/광역시와 시/군/구를 추출합니다.
+     *
+     * @param address 전체 주소
+     * @return [도/광역시, 시/군/구] 배열
+     */
+    private String[] parseAddress(String address) {
+        if (address == null || address.trim().isEmpty()) {
+            throw new RuntimeException("주소 정보가 없습니다.");
+        }
+
+        String[] parts = address.split(" ");
+        if (parts.length < 2) {
+            throw new RuntimeException("주소 형식이 올바르지 않습니다.");
+        }
+
+        String province = parts[0];
+        String city = parts[1];
+
+        return new String[]{province, city};
     }
 }
