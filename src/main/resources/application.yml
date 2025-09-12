@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
   security:
     oauth2:
       client:
@@ -80,3 +84,8 @@ openai:
     model: gpt-4o-mini
     max-tokens: 1000
     temperature: 0.7
+
+# 파일 업로드 설정
+upload:
+  profile-dir: /home/ubuntu/apps/roundandgo/uploads/profile/
+  max-file-size: 5MB
