@@ -34,4 +34,11 @@ public class Community extends Timestamped {
     @Enumerated(value = EnumType.STRING)
     @Column(name = "category", nullable = false)
     private CommunityCategory category; // 게시글 카테고리 (ENUM 타입)
+
+    /**
+     * 게시글에 첨부된 이미지들
+     */
+    @OneToMany(mappedBy = "community", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PostImage> images = new ArrayList<>();
 }
