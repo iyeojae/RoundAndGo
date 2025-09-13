@@ -33,4 +33,14 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
             "WHERE c.category = :category " +
             "GROUP BY c ORDER BY COUNT(l) DESC LIMIT 3")
     List<Community> findTop3ByCategoryOrderByLikes(CommunityCategory category);
+
+    /**
+     * 제목 또는 내용에서 키워드를 검색하는 메서드
+     * @param keyword 검색할 키워드
+     * @return 키워드가 제목 또는 내용에 포함된 게시글 리스트
+     */
+    @Query("SELECT c FROM Community c WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR LOWER(c.content) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "ORDER BY c.createdAt DESC")
+    List<Community> findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(String keyword);
 }

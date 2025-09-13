@@ -281,4 +281,20 @@ public class CommunityService {
                 .map(CommunityResponseDto::new)
                 .toList();
     }
+
+    /**
+     * 제목 또는 내용에서 키워드 검색
+     * @param keyword 검색할 키워드
+     * @return 검색 결과 게시글 응답 DTO 리스트
+     */
+    public List<CommunityResponseDto> searchPosts(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            throw new IllegalArgumentException("검색 키워드를 입력해주세요.");
+        }
+
+        return communityRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(keyword.trim())
+                .stream()
+                .map(CommunityResponseDto::new)
+                .toList();
+    }
 }

@@ -100,6 +100,37 @@ public class CommunityController {
     }
 
     /**
+     * 제목 또는 내용에서 키워드 검색
+     * @param keyword 검색할 키워드
+     * @return 검색 결과 게시글 응답 DTO 리스트
+     */
+    @GetMapping("/search")
+    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> searchPosts(@RequestParam String keyword) {
+        try {
+            List<CommunityResponseDto> posts = communityService.searchPosts(keyword);
+            return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
+                    .statusCode(200)
+                    .msg("게시글 검색 성공")
+                    .data(posts)
+                    .build());
+        } catch (IllegalArgumentException e) {
+            log.warn("게시글 검색 실패 - 잘못된 요청: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    CommonResponse.<List<CommunityResponseDto>>builder()
+                            .statusCode(400)
+                            .msg(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            log.error("게시글 검색 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    CommonResponse.<List<CommunityResponseDto>>builder()
+                            .statusCode(500)
+                            .msg("게시글 검색에 실패했습니다")
+                            .build());
+        }
+    }
+
+    /**
      * 단일 게시글 조회
      * @param id 조회할 게시글 ID
      * @return 해당 게시글 응답 DTO
@@ -127,7 +158,7 @@ public class CommunityController {
      * @param id 수정할 게시글 ID
      * @param userDetails 현재 로그인한 사용자 정보
      * @param postJson 게시글 수정 요청 DTO (JSON 문자열)
-     * @param images 추가할 새 이미지 파일들 (선택사항)
+     * @param images 첨부할 새 이미지 파일들 (선택사항)
      * @return 수정된 게시글 응답 DTO
      */
     @PutMapping(value = "/{id}", consumes = "multipart/form-data")
@@ -202,6 +233,7 @@ public class CommunityController {
 
         try {
             communityService.deletePost(id, userDetails.getUser());
+
             return ResponseEntity.ok(CommonResponse.<Void>builder()
                     .statusCode(200)
                     .msg("게시글 삭제 완료")
@@ -229,71 +261,5 @@ public class CommunityController {
                                 .build());
             }
         }
-    }
-
-    /**
-     * 마이페이지 - 내가 작성한 게시글 조회
-     * @param userDetails 현재 로그인한 사용자 정보
-     * @return 내가 작성한 게시글 응답 DTO 리스트
-     */
-    @GetMapping("/my")
-    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getMyPosts(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        List<CommunityResponseDto> posts = communityService.getPostsByUser(userDetails.getUser());
-        return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
-                .statusCode(200)
-                .msg("내가 작성한 게시글 조회 성공")
-                .data(posts)
-                .build());
-    }
-
-    /**
-     * 게시글 좋아요 토글
-     * @param id 게시글 ID
-     * @param userDetails 현재 로그인한 사용자 정보
-     * @return 좋아요 상태 변경 결과
-     */
-    @PostMapping("/{id}/like")
-    public ResponseEntity<CommonResponse<Boolean>> likePost(@PathVariable Long id,
-                                                            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        boolean liked = communityService.toggleLike(userDetails.getUser(), id);
-        return ResponseEntity.ok(CommonResponse.<Boolean>builder()
-                .statusCode(HttpStatus.OK.value())
-                .msg(liked ? "좋아요 추가됨" : "좋아요 취소됨")
-                .data(liked)
-                .build());
-    }
-
-    // 전체 인기 게시글 TOP 3
-    @GetMapping("/popular")
-    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getPopularPosts() {
-        List<CommunityResponseDto> response = communityService.getTop3PopularPosts();
-        return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
-                .statusCode(HttpStatus.OK.value())
-                .msg("인기 게시글 조회 성공")
-                .data(response)
-                .build());
-    }
-
-    // 카테고리별 인기 게시글 TOP 3
-    @GetMapping("/popular/category")
-    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getPopularPostsByCategory(
-            @RequestParam String category) {
-        List<CommunityResponseDto> response = communityService.getTop3PopularPostsByCategory(category);
-        return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
-                .statusCode(HttpStatus.OK.value())
-                .msg("카테고리별 인기 게시글 조회 성공")
-                .data(response)
-                .build());
-    }
-
-    @GetMapping("/likeCount/{id}")
-    public ResponseEntity<CommonResponse<Integer>> getLikeCount(@PathVariable Long id) {
-        int likeCount = communityService.countLikes(id);
-        return ResponseEntity.ok(CommonResponse.<Integer>builder()
-                .statusCode(HttpStatus.OK.value())
-                .msg("좋아요 수 조회 성공")
-                .data(likeCount)
-                .build());
     }
 }
