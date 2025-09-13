@@ -62,19 +62,27 @@ public class TourApiClient {
         for (int contentTypeId : contentTypeIds) {
             try {
                 TourApiResponseGeneral response = webClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/areaBasedList2")
-                                .queryParam("serviceKey", apiKey)
-                                .queryParam("MobileOS", "ETC")
-                                .queryParam("MobileApp", "RoundAndGo")
-                                .queryParam("_type", "json")
-                                .queryParam("numOfRows", 100)
-                                .queryParam("areaCode", areaCode)
-                                .queryParam("sigunguCode", sigunguCode)
-                                .queryParam("contentTypeId", contentTypeId)
-                                .build())
+                        .uri(uriBuilder -> {
+                            var builder = uriBuilder
+                                    .path("/areaBasedList2")
+                                    .queryParam("serviceKey", apiKey)
+                                    .queryParam("MobileOS", "ETC")
+                                    .queryParam("MobileApp", "RoundAndGo")
+                                    .queryParam("_type", "json")
+                                    .queryParam("numOfRows", 100)
+                                    .queryParam("areaCode", areaCode)
+                                    .queryParam("contentTypeId", contentTypeId);
+
+                            // sigunguCode가 0이 아닐 때만 시군구 코드 파라미터 추가
+                            if (sigunguCode > 0) {
+                                builder.queryParam("sigunguCode", sigunguCode);
+                            }
+
+                            return builder.build();
+                        })
                         .retrieve()
                         .bodyToMono(TourApiResponseGeneral.class)
+                        .onErrorReturn(new TourApiResponseGeneral())
                         .block();
 
                 if (response != null && response.getResponse() != null &&
@@ -85,7 +93,8 @@ public class TourApiClient {
                 }
             } catch (Exception e) {
                 // JSON 파싱 오류나 기타 오류 발생 시 해당 contentTypeId는 건너뛰고 계속 진행
-                log.warn("Tour API 호출 중 오류 발생 - contentTypeId: {}, error: {}", contentTypeId, e.getMessage());
+                log.warn("Tour API 호출 중 오류 발생 - contentTypeId: {}, areaCode: {}, sigunguCode: {}, error: {}",
+                        contentTypeId, areaCode, sigunguCode, e.getMessage());
             }
         }
 

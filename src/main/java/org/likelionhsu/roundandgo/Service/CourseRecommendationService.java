@@ -532,20 +532,37 @@ public class CourseRecommendationService {
         // 골프장 주소에서 지역 정보 추출
         String address = golfCourse.getAddress();
 
+        System.out.println("=== getPlaces Debug ===");
+        System.out.println("Golf Course: " + golfCourse.getName());
+        System.out.println("Address: " + address);
+
         // 제주도로 고정 (현재 프로젝트는 제주도만 서비스)
         int areaCode = regionCodeMapper.getAreaCode("제주특별자치도");
-        int sigunguCode = 0; // 제주도 전체 조회
+        Integer sigunguCode = null; // null로 초기화
 
         // 주소에서 시군구 정보 추출하여 더 정확한 지역 코드 설정
         if (address.contains("제주시")) {
             sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "제주시");
+            System.out.println("제주시 감지 - sigunguCode: " + sigunguCode);
         } else if (address.contains("서귀포시")) {
             sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "서귀포시");
+            System.out.println("서귀포시 감지 - sigunguCode: " + sigunguCode);
         }
 
-        // 지역 기반 조회로 변경
-        return tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(contentTypeId))
-                .stream()
+        System.out.println("Final areaCode: " + areaCode + ", sigunguCode: " + sigunguCode);
+        System.out.println("========================");
+
+        // sigunguCode가 null이거나 0이면 시군구 코드 없이 요청
+        List<TourItem> tourItems;
+        if (sigunguCode == null || sigunguCode == 0) {
+            // 시군구 코드 없이 요청
+            tourItems = tourApiClient.fetchByContentTypes(areaCode, 0, List.of(contentTypeId));
+        } else {
+            // 시군구 코드 포함해서 요청
+            tourItems = tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(contentTypeId));
+        }
+
+        return tourItems.stream()
                 .map(this::toRecommendedPlace)
                 .toList();
     }
@@ -554,22 +571,43 @@ public class CourseRecommendationService {
         // 골프장 주소에서 지역 정보 추출
         String address = golfCourse.getAddress();
 
+        System.out.println("=== getFilteredStays Debug ===");
+        System.out.println("Golf Course: " + golfCourse.getName());
+        System.out.println("Address: " + address);
+
         // 제주도로 고정
         int areaCode = regionCodeMapper.getAreaCode("제주특별자치도");
-        int sigunguCode = 0; // 제주도 전체 조회
+        Integer sigunguCode = null; // null로 초기화
 
         // 주소에서 시군구 정보 추출
         if (address.contains("제주시")) {
             sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "제주시");
+            System.out.println("제주시 감지 - sigunguCode: " + sigunguCode);
         } else if (address.contains("서귀포시")) {
             sigunguCode = regionCodeMapper.getSigunguCode("제주특별자치도", "서귀포시");
+            System.out.println("서귀포시 감지 - sigunguCode: " + sigunguCode);
         }
+
+        System.out.println("Final areaCode: " + areaCode + ", sigunguCode: " + sigunguCode);
 
         List<String> cat3Codes = CourseTypeMapper.getCat3Codes(courseType);
 
-        // 지역 기반 조회로 변경
-        return tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(32))
-                .stream()
+        // sigunguCode가 null이거나 0이면 시군구 코드 없이 요청
+        List<TourItem> tourItems;
+        if (sigunguCode == null || sigunguCode == 0) {
+            System.out.println("시군구 코드 없이 요청");
+            // 시군구 코드 없이 요청
+            tourItems = tourApiClient.fetchByContentTypes(areaCode, 0, List.of(32));
+        } else {
+            System.out.println("시군구 코드 포함해서 요청 - sigunguCode: " + sigunguCode);
+            // 시군구 코드 포함해서 요청
+            tourItems = tourApiClient.fetchByContentTypes(areaCode, sigunguCode, List.of(32));
+        }
+
+        System.out.println("Retrieved tour items count: " + tourItems.size());
+        System.out.println("===============================");
+
+        return tourItems.stream()
                 .filter(item -> cat3Codes.contains(item.getCat3()))
                 .map(this::toRecommendedPlace)
                 .toList();
