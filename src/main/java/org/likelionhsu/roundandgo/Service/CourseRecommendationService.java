@@ -561,10 +561,44 @@ public class CourseRecommendationService {
 
     // GPT 응답에서 최적 매칭 장소 찾기
     private RecommendedPlaceDto findBestMatch(String gptResponse, List<RecommendedPlaceDto> places, String type) {
-        return places.stream()
-                .filter(place -> gptResponse.contains(place.getName()))
-                .findFirst()
-                .orElse(places.stream().findFirst().orElse(null));
+        System.out.println("=== findBestMatch Debug ===");
+        System.out.println("type: " + type);
+        System.out.println("gptResponse: " + gptResponse);
+        
+        // 1. 정확한 이름 매칭
+        for (RecommendedPlaceDto place : places) {
+            if (gptResponse.contains(place.getName())) {
+                System.out.println("Exact match found: " + place.getName());
+                return place;
+            }
+        }
+        
+        // 2. 부분 매칭 (공백 제거 후)
+        String cleanResponse = gptResponse.replaceAll("\\s", "");
+        for (RecommendedPlaceDto place : places) {
+            String cleanPlaceName = place.getName().replaceAll("\\s", "");
+            if (cleanResponse.contains(cleanPlaceName) || cleanPlaceName.contains(cleanResponse)) {
+                System.out.println("Partial match found: " + place.getName());
+                return place;
+            }
+        }
+        
+        // 3. 키워드 기반 매칭
+        String[] keywords = gptResponse.split("[|\\-\\s,]+");
+        for (String keyword : keywords) {
+            keyword = keyword.trim();
+            if (keyword.length() > 1) {
+                for (RecommendedPlaceDto place : places) {
+                    if (place.getName().contains(keyword) || keyword.contains(place.getName())) {
+                        System.out.println("Keyword match found: " + place.getName() + " (keyword: " + keyword + ")");
+                        return place;
+                    }
+                }
+            }
+        }
+        
+        System.out.println("No match found for type: " + type + ", using fallback");
+        return places.stream().findFirst().orElse(null);
     }
 
     // 다일차 응답에서 특정 일차 정보 추출
@@ -573,11 +607,24 @@ public class CourseRecommendationService {
             int startIndex = gptResponse.indexOf(dayPattern);
             if (startIndex == -1) return null;
 
-            int endIndex = gptResponse.indexOf("]", startIndex);
-            if (endIndex == -1) endIndex = gptResponse.length();
+            // "]" 다음부터 실제 추천 내용 찾기
+            int bracketEnd = gptResponse.indexOf("]", startIndex);
+            if (bracketEnd == -1) return null;
 
-            return gptResponse.substring(startIndex, endIndex);
+            // "]" 이후부터 다음 일차가 시작되기 전까지 또는 문서 끝까지
+            int nextDayIndex = gptResponse.indexOf("[", bracketEnd + 1);
+            int endIndex = (nextDayIndex == -1) ? gptResponse.length() : nextDayIndex;
+
+            String dayContent = gptResponse.substring(bracketEnd + 1, endIndex).trim();
+
+            System.out.println("=== extractDayRecommendation Debug ===");
+            System.out.println("dayPattern: " + dayPattern);
+            System.out.println("dayContent: " + dayContent);
+            System.out.println("=====================================");
+
+            return dayContent;
         } catch (Exception e) {
+            System.out.println("extractDayRecommendation error: " + e.getMessage());
             return null;
         }
     }
