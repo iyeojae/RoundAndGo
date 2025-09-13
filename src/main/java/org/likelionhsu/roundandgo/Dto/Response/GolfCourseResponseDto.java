@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 @Builder
 public class GolfCourseResponseDto {
+    private Long id; // 골프장 ID 추가
     private String name;
     private String address;
     private String phoneNumber;

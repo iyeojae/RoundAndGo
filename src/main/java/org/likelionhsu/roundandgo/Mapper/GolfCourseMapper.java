@@ -30,6 +30,7 @@ public class GolfCourseMapper {
 
     public static GolfCourseResponseDto toResponseDto(GolfCourse entity) {
         return GolfCourseResponseDto.builder()
+                .id(entity.getId()) // 골프장 ID 매핑 추가
                 .name(entity.getName())
                 .address(entity.getAddress())
                 .phoneNumber(entity.getPhoneNumber())
