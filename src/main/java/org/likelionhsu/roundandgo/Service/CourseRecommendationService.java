@@ -559,6 +559,29 @@ public class CourseRecommendationService {
         return selected;
     }
 
+    // GPT 응답에서 최적 매칭 장소 찾기
+    private RecommendedPlaceDto findBestMatch(String gptResponse, List<RecommendedPlaceDto> places, String type) {
+        return places.stream()
+                .filter(place -> gptResponse.contains(place.getName()))
+                .findFirst()
+                .orElse(places.stream().findFirst().orElse(null));
+    }
+
+    // 다일차 응답에서 특정 일차 정보 추출
+    private String extractDayRecommendation(String gptResponse, String dayPattern) {
+        try {
+            int startIndex = gptResponse.indexOf(dayPattern);
+            if (startIndex == -1) return null;
+
+            int endIndex = gptResponse.indexOf("]", startIndex);
+            if (endIndex == -1) endIndex = gptResponse.length();
+
+            return gptResponse.substring(startIndex, endIndex);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public List<RecommendedPlaceDto> getPlaces(GolfCourse golfCourse, int contentTypeId) {
         // 골프장 주소에서 지역 정보 추출
         String address = golfCourse.getAddress();
