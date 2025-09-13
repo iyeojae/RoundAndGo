@@ -563,70 +563,134 @@ public class CourseRecommendationService {
     private RecommendedPlaceDto findBestMatch(String gptResponse, List<RecommendedPlaceDto> places, String type) {
         System.out.println("=== findBestMatch Debug ===");
         System.out.println("type: " + type);
-        System.out.println("gptResponse: " + gptResponse);
-        
-        // 1. 정확한 이름 매칭
-        for (RecommendedPlaceDto place : places) {
-            if (gptResponse.contains(place.getName())) {
-                System.out.println("Exact match found: " + place.getName());
-                return place;
+        System.out.println("gptResponse: " + gptResponse.substring(0, Math.min(200, gptResponse.length())) + "...");
+
+        // GPT 응답에서 해당 타입의 장소명만 추출 (| 구분자 사용)
+        String[] parts = gptResponse.split("\\|");
+        String targetPlaceName = null;
+
+        if (parts.length >= 3) {
+            switch (type) {
+                case "음식점" -> targetPlaceName = parts[0].trim();
+                case "관광지" -> targetPlaceName = parts[1].trim();
+                case "숙소" -> targetPlaceName = parts[2].trim();
             }
         }
-        
-        // 2. 부분 매칭 (공백 제거 후)
-        String cleanResponse = gptResponse.replaceAll("\\s", "");
-        for (RecommendedPlaceDto place : places) {
-            String cleanPlaceName = place.getName().replaceAll("\\s", "");
-            if (cleanResponse.contains(cleanPlaceName) || cleanPlaceName.contains(cleanResponse)) {
-                System.out.println("Partial match found: " + place.getName());
-                return place;
+
+        System.out.println("Extracted target place name: " + targetPlaceName);
+
+        if (targetPlaceName != null && !targetPlaceName.isEmpty()) {
+            // 1. 정확한 이름 매칭
+            for (RecommendedPlaceDto place : places) {
+                if (place.getName().equals(targetPlaceName)) {
+                    System.out.println("Exact match found: " + place.getName());
+                    return place;
+                }
             }
-        }
-        
-        // 3. 키워드 기반 매칭
-        String[] keywords = gptResponse.split("[|\\-\\s,]+");
-        for (String keyword : keywords) {
-            keyword = keyword.trim();
-            if (keyword.length() > 1) {
-                for (RecommendedPlaceDto place : places) {
-                    if (place.getName().contains(keyword) || keyword.contains(place.getName())) {
-                        System.out.println("Keyword match found: " + place.getName() + " (keyword: " + keyword + ")");
-                        return place;
+
+            // 2. 부분 매칭 (양방향)
+            for (RecommendedPlaceDto place : places) {
+                if (place.getName().contains(targetPlaceName) || targetPlaceName.contains(place.getName())) {
+                    System.out.println("Partial match found: " + place.getName() + " (target: " + targetPlaceName + ")");
+                    return place;
+                }
+            }
+
+            // 3. 공백 제거 후 부분 매칭
+            String cleanTarget = targetPlaceName.replaceAll("\\s", "");
+            for (RecommendedPlaceDto place : places) {
+                String cleanPlaceName = place.getName().replaceAll("\\s", "");
+                if (cleanPlaceName.contains(cleanTarget) || cleanTarget.contains(cleanPlaceName)) {
+                    System.out.println("Clean partial match found: " + place.getName() + " (target: " + targetPlaceName + ")");
+                    return place;
+                }
+            }
+
+            // 4. 키워드 기반 매칭 (더 세밀하게)
+            String[] keywords = targetPlaceName.split("[\\s\\-]+");
+            for (String keyword : keywords) {
+                keyword = keyword.trim();
+                if (keyword.length() > 1) {
+                    for (RecommendedPlaceDto place : places) {
+                        if (place.getName().contains(keyword)) {
+                            System.out.println("Keyword match found: " + place.getName() + " (keyword: " + keyword + ")");
+                            return place;
+                        }
                     }
                 }
             }
+
+            // 5. 타입별 특화 키워드 매칭
+            RecommendedPlaceDto typeBasedMatch = findByTypeSpecificKeywords(targetPlaceName, places, type);
+            if (typeBasedMatch != null) {
+                System.out.println("Type-specific keyword match found: " + typeBasedMatch.getName());
+                return typeBasedMatch;
+            }
         }
-        
+
         System.out.println("No match found for type: " + type + ", using fallback");
         return places.stream().findFirst().orElse(null);
     }
 
-    // 다일차 응답에서 특정 일차 정보 추출
-    private String extractDayRecommendation(String gptResponse, String dayPattern) {
-        try {
-            int startIndex = gptResponse.indexOf(dayPattern);
-            if (startIndex == -1) return null;
-
-            // "]" 다음부터 실제 추천 내용 찾기
-            int bracketEnd = gptResponse.indexOf("]", startIndex);
-            if (bracketEnd == -1) return null;
-
-            // "]" 이후부터 다음 일차가 시작되기 전까지 또는 문서 끝까지
-            int nextDayIndex = gptResponse.indexOf("[", bracketEnd + 1);
-            int endIndex = (nextDayIndex == -1) ? gptResponse.length() : nextDayIndex;
-
-            String dayContent = gptResponse.substring(bracketEnd + 1, endIndex).trim();
-
-            System.out.println("=== extractDayRecommendation Debug ===");
-            System.out.println("dayPattern: " + dayPattern);
-            System.out.println("dayContent: " + dayContent);
-            System.out.println("=====================================");
-
-            return dayContent;
-        } catch (Exception e) {
-            System.out.println("extractDayRecommendation error: " + e.getMessage());
-            return null;
+    // 타입별 특화 키워드 매칭
+    private RecommendedPlaceDto findByTypeSpecificKeywords(String targetName, List<RecommendedPlaceDto> places, String type) {
+        switch (type) {
+            case "음식점" -> {
+                // 흑돼지, 해물, 국수 등의 키워드로 매칭
+                if (targetName.contains("흑돼지")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("흑돼지") || place.getName().contains("돼지"))
+                            .findFirst().orElse(null);
+                }
+                if (targetName.contains("해물")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("해물") || place.getName().contains("바다") || place.getName().contains("회"))
+                            .findFirst().orElse(null);
+                }
+                if (targetName.contains("국수")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("국수") || place.getName().contains("면"))
+                            .findFirst().orElse(null);
+                }
+            }
+            case "관광지" -> {
+                // 한라산, 성산일출봉, 오름 등의 키워드로 매칭
+                if (targetName.contains("한라산")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("한라") || place.getName().contains("산"))
+                            .findFirst().orElse(null);
+                }
+                if (targetName.contains("성산일출봉")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("성산") || place.getName().contains("일출"))
+                            .findFirst().orElse(null);
+                }
+                if (targetName.contains("오름")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("오름"))
+                            .findFirst().orElse(null);
+                }
+            }
+            case "숙소" -> {
+                // 호텔, 리조트 등의 키워드로 매칭
+                if (targetName.contains("신라")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("신라"))
+                            .findFirst().orElse(null);
+                }
+                if (targetName.contains("조선")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("조선") || place.getName().contains("그랜드"))
+                            .findFirst().orElse(null);
+                }
+                if (targetName.contains("롯데")) {
+                    return places.stream()
+                            .filter(place -> place.getName().contains("롯데"))
+                            .findFirst().orElse(null);
+                }
+            }
         }
+        return null;
     }
 
     public List<RecommendedPlaceDto> getPlaces(GolfCourse golfCourse, int contentTypeId) {
@@ -787,6 +851,69 @@ public class CourseRecommendationService {
             placeSchedule.setLocation(place.getAddress());
             placeSchedule.setColor(ScheduleColor.BLUE);
             scheduleService.createSchedule(user, placeSchedule, startDateTime, endDateTime);
+        }
+    }
+
+    // 다일차 응답에서 특정 일차 정보 추출
+    private String extractDayRecommendation(String gptResponse, String dayPattern) {
+        try {
+            int startIndex = gptResponse.indexOf(dayPattern);
+            if (startIndex == -1) return null;
+
+            // "]" 다음부터 실제 추천 내용 찾기
+            int bracketEnd = gptResponse.indexOf("]", startIndex);
+            if (bracketEnd == -1) return null;
+
+            // "]" 이후부터 다음 줄바꿈이나 특정 패턴까지만 추출
+            String afterBracket = gptResponse.substring(bracketEnd + 1);
+
+            // 첫 번째 줄만 추출 (상세 설명 제외)
+            String[] lines = afterBracket.split("\\n");
+            String firstLine = lines[0].trim();
+
+            // "|" 구분자가 포함된 부분만 추출 (추천 형식: 음식점|관광지|숙소)
+            if (firstLine.contains("|")) {
+                // | 구분자로 분리해서 3개 부분이 있는지 확인
+                String[] parts = firstLine.split("\\|");
+                if (parts.length >= 3) {
+                    // 앞뒤 공백 제거하고 다시 조합
+                    String cleanRecommendation = String.join("|",
+                        parts[0].trim(),
+                        parts[1].trim(),
+                        parts[2].trim()
+                    );
+
+                    System.out.println("=== extractDayRecommendation Debug ===");
+                    System.out.println("dayPattern: " + dayPattern);
+                    System.out.println("dayContent: " + cleanRecommendation);
+                    System.out.println("=====================================");
+
+                    return cleanRecommendation;
+                }
+            }
+
+            // | 구분자가 없거나 형식이 맞지 않는 경우 기존 로직 사용
+            // "### 상세 설명" 같은 패턴이 있으면 그 전까지만 추출
+            int detailIndex = firstLine.indexOf("###");
+            if (detailIndex != -1) {
+                firstLine = firstLine.substring(0, detailIndex).trim();
+            }
+
+            // "**1일차:**" 같은 패턴이 있으면 그 전까지만 추출
+            int dayDetailIndex = firstLine.indexOf("**" + dayPattern.replace("일차", "") + "일차:**");
+            if (dayDetailIndex != -1) {
+                firstLine = firstLine.substring(0, dayDetailIndex).trim();
+            }
+
+            System.out.println("=== extractDayRecommendation Debug ===");
+            System.out.println("dayPattern: " + dayPattern);
+            System.out.println("dayContent: " + firstLine);
+            System.out.println("=====================================");
+
+            return firstLine;
+        } catch (Exception e) {
+            System.out.println("extractDayRecommendation error: " + e.getMessage());
+            return null;
         }
     }
 }
