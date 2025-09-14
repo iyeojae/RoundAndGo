@@ -262,4 +262,121 @@ public class CommunityController {
             }
         }
     }
+
+    /**
+     * 게시글 좋아요 토글
+     * @param id 게시글 ID
+     * @param userDetails 현재 로그인한 사용자 정보
+     * @return 좋아요 상태 응답
+     */
+    @PostMapping("/{id}/like")
+    public ResponseEntity<CommonResponse<Boolean>> toggleLike(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        try {
+            boolean isLiked = communityService.toggleLike(userDetails.getUser(), id);
+            return ResponseEntity.ok(CommonResponse.<Boolean>builder()
+                    .statusCode(200)
+                    .msg(isLiked ? "좋아요 추가" : "좋아요 취소")
+                    .data(isLiked)
+                    .build());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    CommonResponse.<Boolean>builder()
+                            .statusCode(404)
+                            .msg(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            log.error("좋아요 토글 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    CommonResponse.<Boolean>builder()
+                            .statusCode(500)
+                            .msg("좋아요 처리에 실패했습니다")
+                            .build());
+        }
+    }
+
+    /**
+     * 인기 게시글 TOP3 조회
+     * @return 인기 게시글 TOP3 응답 DTO 리스트
+     */
+    @GetMapping("/popular")
+    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getPopularPosts() {
+        try {
+            List<CommunityResponseDto> popularPosts = communityService.getTop3PopularPosts();
+            return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
+                    .statusCode(200)
+                    .msg("인기 게시글 TOP3 조회 성공")
+                    .data(popularPosts)
+                    .build());
+        } catch (Exception e) {
+            log.error("인기 게시글 조회 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    CommonResponse.<List<CommunityResponseDto>>builder()
+                            .statusCode(500)
+                            .msg("인기 게시글 조회에 실패했습니다")
+                            .build());
+        }
+    }
+
+    /**
+     * 카테고리별 인기 게시글 TOP3 조회
+     * @param category 조회할 카테고리
+     * @return 카테고리별 인기 게시글 TOP3 응답 DTO 리스트
+     */
+    @GetMapping("/popular/category")
+    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getPopularPostsByCategory(@RequestParam String category) {
+        try {
+            List<CommunityResponseDto> popularPosts = communityService.getTop3PopularPostsByCategory(category);
+            return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
+                    .statusCode(200)
+                    .msg("카테고리별 인기 게시글 TOP3 조회 성공")
+                    .data(popularPosts)
+                    .build());
+        } catch (IllegalArgumentException e) {
+            log.warn("카테고리별 인기 게시글 조회 실패 - 잘못된 카테고리: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    CommonResponse.<List<CommunityResponseDto>>builder()
+                            .statusCode(400)
+                            .msg(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            log.error("카테고리별 인기 게시글 조회 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    CommonResponse.<List<CommunityResponseDto>>builder()
+                            .statusCode(500)
+                            .msg("카테고리별 인기 게시글 조회에 실패했습니다")
+                            .build());
+        }
+    }
+
+    /**
+     * 게시글 좋아요 수 조회
+     * @param id 게시글 ID
+     * @return 해당 게시글의 좋아요 수
+     */
+    @GetMapping("/likeCount/{id}")
+    public ResponseEntity<CommonResponse<Integer>> getLikeCount(@PathVariable Long id) {
+        try {
+            int likeCount = communityService.countLikes(id);
+            return ResponseEntity.ok(CommonResponse.<Integer>builder()
+                    .statusCode(200)
+                    .msg("좋아요 수 조회 성공")
+                    .data(likeCount)
+                    .build());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    CommonResponse.<Integer>builder()
+                            .statusCode(404)
+                            .msg(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            log.error("좋아요 수 조회 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    CommonResponse.<Integer>builder()
+                            .statusCode(500)
+                            .msg("좋아요 수 조회에 실패했습니다")
+                            .build());
+        }
+    }
 }
