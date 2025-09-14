@@ -2,13 +2,14 @@ package org.likelionhsu.roundandgo.Entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.likelionhsu.roundandgo.Common.Timestamped;
 
 @Entity
 @Setter @Getter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Comment {
+public class Comment extends Timestamped {
     @Id
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Long id; // 댓글 ID
