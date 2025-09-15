@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     List<Schedule> findAllByUserOrderByStartDateTimeAsc(User user);
+    List<Schedule> findByUserAndTitleContaining(User user, String title);
 }

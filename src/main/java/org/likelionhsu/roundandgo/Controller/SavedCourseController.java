@@ -2,6 +2,7 @@ package org.likelionhsu.roundandgo.Controller;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
+import org.likelionhsu.roundandgo.Dto.Request.SaveCourseFromRecommendationRequestDto;
 import org.likelionhsu.roundandgo.Dto.Request.SavedCourseRequestDto;
 import org.likelionhsu.roundandgo.Dto.Response.SavedCourseResponseDto;
 import org.likelionhsu.roundandgo.Security.UserDetailsImpl;
@@ -32,6 +33,23 @@ public class SavedCourseController {
                 CommonResponse.<SavedCourseResponseDto>builder()
                         .statusCode(HttpStatus.CREATED.value())
                         .msg("코스 저장 성공")
+                        .data(dto)
+                        .build()
+        );
+    }
+
+    // 추천 코스 ID로 코스 저장
+    @PostMapping("/from-recommendation")
+    public ResponseEntity<CommonResponse<SavedCourseResponseDto>> saveCourseFromRecommendation(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody SaveCourseFromRecommendationRequestDto request
+    ) {
+        SavedCourseResponseDto dto = savedCourseService.saveCourseFromRecommendation(userDetails.getUser(), request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                CommonResponse.<SavedCourseResponseDto>builder()
+                        .statusCode(HttpStatus.CREATED.value())
+                        .msg("추천 코스로부터 코스 저장 성공")
                         .data(dto)
                         .build()
         );
@@ -112,6 +130,25 @@ public class SavedCourseController {
                 CommonResponse.<SavedCourseResponseDto>builder()
                         .statusCode(HttpStatus.OK.value())
                         .msg("코스 수정 성공")
+                        .data(dto)
+                        .build()
+        );
+    }
+
+    // 코스 수정 (없으면 새로 저장, 기존 코스와 다르면 업데이트)
+    @PutMapping("/{courseId}/from-recommendation")
+    public ResponseEntity<CommonResponse<SavedCourseResponseDto>> updateOrCreateCourseFromRecommendation(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long courseId,
+            @RequestBody SaveCourseFromRecommendationRequestDto request
+    ) {
+        SavedCourseResponseDto dto = savedCourseService.updateOrCreateCourseFromRecommendation(
+                userDetails.getUser(), courseId, request);
+
+        return ResponseEntity.ok(
+                CommonResponse.<SavedCourseResponseDto>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("코스 수정/생성 성공")
                         .data(dto)
                         .build()
         );
