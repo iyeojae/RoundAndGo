@@ -1,6 +1,9 @@
 package org.likelionhsu.roundandgo.Security.config;
 
 import lombok.RequiredArgsConstructor;
+import org.likelionhsu.roundandgo.Security.auth.EmailAuthenticationFailureHandler;
+import org.likelionhsu.roundandgo.Security.auth.EmailAuthenticationFilter;
+import org.likelionhsu.roundandgo.Security.auth.EmailAuthenticationSuccessHandler;
 import org.likelionhsu.roundandgo.Security.jwt.JwtAuthenticationFilter;
 import org.likelionhsu.roundandgo.Security.oauth.KakaoOAuth2UserService;
 import org.likelionhsu.roundandgo.Security.oauth.OAuth2LoginSuccessHandler;
@@ -33,6 +36,10 @@ public class SecurityConfig {
     private final KakaoOAuth2UserService kakaoOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
+    // 새로 추가된 이메일 로그인 핸들러들
+    private final EmailAuthenticationSuccessHandler emailAuthenticationSuccessHandler;
+    private final EmailAuthenticationFailureHandler emailAuthenticationFailureHandler;
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -42,7 +49,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults()) // CORS 설정 활성화
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -52,13 +59,29 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form.disable())
                 .httpBasic(httpBasic -> httpBasic.disable())
+                // OAuth2 로그인 설정 (카카오 전용)
                 .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/oauth2/authorization/kakao")  // 카카오 로그인 페이지 명시
                         .userInfoEndpoint(userInfo -> userInfo.userService(kakaoOAuth2UserService))
                         .successHandler(oAuth2LoginSuccessHandler)
+                        .failureUrl("/login?error=oauth2")  // OAuth2 실패 시 리다이렉트
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // JWT 인증 필터 추가
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // 이메일 로그인 필터 추가 (OAuth2와 완전 분리)
+                .addFilterBefore(emailAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // 이메일 로그인 전용 필터 Bean
+    @Bean
+    public EmailAuthenticationFilter emailAuthenticationFilter() throws Exception {
+        return new EmailAuthenticationFilter(
+                authenticationManager(null),
+                emailAuthenticationSuccessHandler,
+                emailAuthenticationFailureHandler
+        );
     }
 
     // ✅ 이 부분을 꼭 추가!

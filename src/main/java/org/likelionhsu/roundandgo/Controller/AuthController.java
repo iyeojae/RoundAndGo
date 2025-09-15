@@ -55,8 +55,15 @@ public class AuthController {
     private final EmailVerificationRepository emailVerificationRepository;
     private final EmailService emailService; // 이메일 서비스 추가
 
-    @PostMapping("/login")
-    public ResponseEntity<CommonResponse<LoginResponseDto>> login(@RequestBody LoginRequestDto request) {
+    // 기존 login 메서드를 제거하거나 다른 경로로 변경
+    // 새로운 EmailAuthenticationFilter가 /api/auth/login을 처리함
+    // 아래 메서드는 백업용으로 주석 처리 (필요 시 활성화 가능)
+
+    /*
+    // 만약 기존 로그인 로직을 유지하려면 다른 경로 사용
+    @PostMapping("/login-manual")
+    public ResponseEntity<CommonResponse<LoginResponseDto>> loginManual(@RequestBody LoginRequestDto request) {
+        // 기존 로그인 로직 유지 (백업용)
         UsernamePasswordAuthenticationToken token =
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
 
@@ -75,6 +82,7 @@ public class AuthController {
                         .build()
         );
     }
+    */
 
     @PostMapping("/signup")
     public ResponseEntity<CommonResponse<Void>> signup(@RequestBody SignupRequestDto dto) {

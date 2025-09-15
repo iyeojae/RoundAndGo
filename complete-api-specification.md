@@ -240,22 +240,49 @@
 
 | Method | Endpoint | 설명 | 요청 | 응답 | 비고 |
 |--------|----------|------|------|------|------|
-| POST | /api/courses/recommendation | 코스 추천 생성 | Header: Authorization; Query: golfCourseId, teeOffTime, courseType | CommonResponse<CourseRecommendationResponseDto> | Auth 필요 |
+| POST | /api/courses/recommendation | 일반 코스 추천 생성 | Header: Authorization; Query: golfCourseId, teeOffTime, courseType | CommonResponse<CourseRecommendationResponseDto> | Auth 필요 |
 | GET | /api/courses/recommendation/my | 내 추천 코스 목록 | Header: Authorization | CommonResponse<List<CourseRecommendationResponseDto>> | Auth 필요 |
 | GET | /api/courses/recommendation/{id} | 추천 코스 단건 조회 | Path: id | CommonResponse<CourseRecommendationResponseDto> | 공개 |
 | PUT | /api/courses/recommendation/{id} | 추천 코스 수정 | Header: Authorization; Path: id; Query: golfCourseId, teeOffTime, courseType | CommonResponse<CourseRecommendationResponseDto> | Auth 필요, 작성자만 |
 | POST | /api/courses/recommendation/multi-day | 다일차 코스 추천 생성 | Header: Authorization; Body: CourseRecommendationRequestDto | CommonResponse<List<CourseRecommendationResponseDto>> | Auth 필요 |
+| **POST** | **/api/courses/recommendation/ai** | **🤖 AI 기반 코스 추천 생성** | **Header: Authorization; Query: golfCourseId, teeOffTime, courseType, userPreferences** | **CommonResponse<CourseRecommendationResponseDto>** | **Auth 필요, GPT 활용** |
+| **POST** | **/api/courses/recommendation/ai/multi-day** | **🤖 AI 기반 다일차 코스 추천 생성** | **Header: Authorization; Body: CourseRecommendationRequestDto; Query: userPreferences** | **CommonResponse<List<CourseRecommendationResponseDto>>** | **Auth 필요, GPT 활용** |
 
 ### 요청/응답 DTO 상세
 
-**CourseRecommendationRequestDto**
+**일반 코스 추천 생성 (POST /api/courses/recommendation)**
+```
+Query Parameters:
+- golfCourseId: 1                    // Long: 골프장 ID
+- teeOffTime: "09:00"               // String: 티오프 시간
+- courseType: "luxury"              // String: 코스 타입 ("luxury", "value", "resort", "theme")
+```
+
+**🤖 AI 코스 추천 생성 (POST /api/courses/recommendation/ai)**
+```
+Query Parameters:
+- golfCourseId: 1                    // Long: 골프장 ID
+- teeOffTime: "09:00"               // String: 티오프 시간
+- courseType: "luxury"              // String: 코스 타입
+- userPreferences: "맛집 위주로, 바다 전망 좋은 숙소" // String: 사용자 선호도 (optional)
+```
+
+**CourseRecommendationRequestDto (다일차 코스용)**
 ```json
 {
   "golfCourseIds": [1, 2],           // List<Long>: 골프장 ID 목록 (다일차)
   "startDate": "2024-01-01",         // LocalDate: 여행 시작 날짜
   "travelDays": 2,                   // Integer: 여행 기간 (일)
-  "teeOffTimes": ["09:00", "09:30"]  // List<String>: 각 일차별 티오프 시간
+  "teeOffTimes": ["09:00", "09:30"], // List<String>: 각 일차별 티오프 시간
+  "courseType": "luxury"             // String: 코스 타입 (optional, 전체 여행에 적용)
 }
+```
+
+**🤖 AI 다일차 코스 추천 (POST /api/courses/recommendation/ai/multi-day)**
+```
+Body: CourseRecommendationRequestDto (위와 동일)
+Query Parameters:
+- userPreferences: "전통 한식 위주, 온천 숙소 선호, 자연 경관 중시" // String: 사용자 선호도 (optional)
 ```
 
 **CourseRecommendationResponseDto**
@@ -264,25 +291,64 @@
   "id": 1,                          // Long: 추천 코스 ID
   "courseTypeLabel": "럭셔리 코스",   // String: 코스 타입 라벨
   "golfCourseName": "제주 골프 클럽", // String: 골프장 이름
-  "estimatedEndTime": "17:00",      // String: 예상 종료 시간
+  "estimatedEndTime": "17:00",      // String: 골프 예상 종료 시간
   "recommendationOrder": ["food", "tour", "stay"], // List<String>: 추천 순서
   "recommendedPlaces": [            // List<RecommendedPlaceDto>: 추천 장소들
     {
-      "type": "restaurant",         // String: 장소 타입
+      "type": "restaurant",         // String: 장소 타입 ("food", "tour", "stay")
       "name": "제주 흑돼지 맛집",     // String: 장소 이름
       "address": "제주시 ○○로 123", // String: 주소
       "imageUrl": "https://example.com/restaurant.jpg", // String: 이미지 URL
       "distanceKm": 2.5,           // Double: 골프장에서의 거리 (km)
       "mapx": "126.5219",          // String: 경도
-      "mapy": "33.4996"            // String: 위도
+      "mapy": "33.4996",           // String: 위도
+      "aiReason": "사용자가 선호하는 전통 한식 맛집으로, 골프장에서 가까운 곳입니다." // String: AI 추천 이유 (AI 추천시만)
     }
   ],
   "startDate": "2024-01-01",        // LocalDate: 여행 시작 날짜
   "travelDays": 2,                  // Integer: 여행 기간
-  "dayNumber": 1,                   // Integer: 몇일차인지
-  "teeOffTime": "09:00"             // String: 티오프 시간
+  "dayNumber": 1,                   // Integer: 몇일차인지 (다일차인 경우)
+  "teeOffTime": "09:00",            // String: 티오프 시간
+  "userId": 10,                     // Long: 작성자 ID
+  "createdAt": "2024-01-01T10:00:00", // LocalDateTime: 생성일시
+  "aiGenerated": true               // Boolean: AI 생성 여부
 }
 ```
+
+### 🤖 AI 추천 기능 특징
+
+#### 🔥 **GPT 기반 지능형 추천**
+- **개인 맞춤형**: `userPreferences` 파라미터로 개인 취향 반영
+- **상황 인식**: 골프장 위치, 시간대, 코스 타입을 종합 고려
+- **자연어 처리**: "맛집 위주로", "바다 전망", "온천 숙소" 등 자연어 입력 지원
+
+#### 📍 **AI 추천 vs 일반 추천 차이점**
+| 구분 | 일반 추천 | 🤖 AI 추천 |
+|------|----------|------------|
+| **추천 방식** | 규칙 기반 추천 | GPT 기반 지능형 추천 |
+| **개인화** | 코스 타입만 반영 | 사용자 선호도 자연어 분석 |
+| **추천 이유** | 제공 안함 | `aiReason` 필드로 추천 이유 제공 |
+| **응답 속도** | 빠름 | 상대적으로 느림 (GPT 호출) |
+| **추천 품질** | 표준화된 결과 | 개인 맞춤형 고품질 결과 |
+
+#### 🎯 **사용 예시**
+
+**일반 추천**: 
+```
+POST /api/courses/recommendation?golfCourseId=1&teeOffTime=09:00&courseType=luxury
+→ 규칙 기반으로 럭셔리 코스 타입에 맞는 표준 추천
+```
+
+**🤖 AI 추천**:
+```
+POST /api/courses/recommendation/ai?golfCourseId=1&teeOffTime=09:00&courseType=luxury&userPreferences=바다뷰 맛집, 스파 있는 호텔, 조용한 관광지
+→ GPT가 사용자 선호도를 분석해서 맞춤형 추천 + 추천 이유 제공
+```
+
+#### 🌟 **AI 다일차 추천의 고급 기능**
+- **일관된 테마**: 전체 여행 기간에 걸쳐 일관된 테마 유지
+- **동선 최적화**: GPT가 지리적 위치를 고려한 효율적인 동선 제안
+- **날짜별 특화**: 각 날짜별로 다른 특색 있는 추천 제공
 
 ---
 
@@ -456,24 +522,155 @@
 
 | Method | Endpoint | 설명 | 요청 | 응답 | 비고 |
 |--------|----------|------|------|------|------|
-| GET | /api/tour-info/{contentTypeId} | 관광 정보 조회 | Path: contentTypeId; Query: mapX, mapY, radius | CommonResponse<List<TourInfoResponseDto>> | 공개 |
+| GET | /api/tour-infos | 지역별 관광 정보 조회 | Query: province, city | CommonResponse<TourInfoResponseDto> | 공개 |
+| GET | /api/tour-infos/attractions | 지역별 관광지 조회 | Query: province, city | List<TourItem> | 공개 |
+| GET | /api/tour-infos/restaurants | 지역별 음식점 조회 | Query: province, city | List<TourItem> | 공개 |
+| GET | /api/tour-infos/accommodations | 지역별 숙박시설 조회 | Query: province, city | List<TourItem> | 공개 |
+| GET | /api/tour-infos/accommodations/by-course-type | 코스 타입별 숙박시설 조회 | Query: province, city, courseType | List<TourItem> | 공개 |
+| GET | /api/tour-infos/nearby | 좌표 기반 주변 관광 정보 조회 | Query: mapX, mapY | CommonResponse<TourInfoResponseDto> | 공개 |
+| GET | /api/tour-infos/nearby/attractions | 좌표 기반 주변 관광지 조회 | Query: mapX, mapY | List<TourItem> | 공개 |
+| GET | /api/tour-infos/nearby/restaurants | 좌표 기반 주변 음식점 조회 | Query: mapX, mapY | List<TourItem> | 공개 |
+| GET | /api/tour-infos/nearby/accommodations | 좌표 기반 주변 숙박시설 조회 | Query: mapX, mapY | List<TourItem> | 공개 |
+| GET | /api/tour-infos/nearby/accommodations/by-course-type | 좌표 기반 코스 타입별 숙박시설 조회 | Query: mapX, mapY, courseType | List<TourItem> | 공개 |
+| GET | /api/tour-infos/by-golf-course | 골프장 기반 지역 관광 정보 조회 | Query: golfCourseId | CommonResponse<TourInfoResponseDto> | 공개 |
+| GET | /api/tour-infos/by-golf-course/attractions | 골프장 기반 지역 관광지 조회 | Query: golfCourseId | List<TourItem> | 공개 |
+| GET | /api/tour-infos/by-golf-course/restaurants | 골프장 기반 지역 음식점 조회 | Query: golfCourseId | List<TourItem> | 공개 |
+| GET | /api/tour-infos/by-golf-course/accommodations | 골프장 기반 지역 숙박시설 조회 | Query: golfCourseId | List<TourItem> | 공개 |
+| GET | /api/tour-infos/nearby-golf-course | 골프장 기반 주변 관광 정보 조회 | Query: golfCourseId | CommonResponse<TourInfoResponseDto> | 공개 |
+| GET | /api/tour-infos/nearby-golf-course/attractions | 골프장 기반 주변 관광지 조회 | Query: golfCourseId | List<TourItem> | 공개 |
+| GET | /api/tour-infos/nearby-golf-course/restaurants | 골프장 기반 주변 음식점 조회 | Query: golfCourseId | List<TourItem> | 공개 |
+| GET | /api/tour-infos/nearby-golf-course/accommodations | 골프장 기반 주변 숙박시설 조회 | Query: golfCourseId | List<TourItem> | 공개 |
 
 ### 요청/응답 DTO 상세
 
 **TourInfoResponseDto**
 ```json
 {
-  "contentId": "12345",             // String: 콘텐츠 ID
-  "title": "제주 한라산",            // String: 관광지 이름
-  "addr1": "제주특별자치도 제주시...", // String: 주소
-  "firstImage": "https://example.com/hanla.jpg", // String: 대표 이미지
-  "mapx": "126.5219",               // String: 경도
-  "mapy": "33.4996",                // String: 위도
-  "mlevel": "6",                    // String: 지도 레벨
-  "tel": "064-710-7850",            // String: 전화번호
-  "dist": "1.5"                     // String: 거리 (km)
+  "attractions": [                  // List<TourItem>: 관광지 목록
+    {
+      "title": "제주 한라산",        // String: 콘텐츠 명칭
+      "addr1": "제주특별자치도 제주시 1100로 2070-61", // String: 주소 (기본)
+      "addr2": "(영실동)",          // String: 주소 (상세)
+      "firstimage": "https://example.com/hanla.jpg", // String: 대표 이미지 URL
+      "mapx": "126.5219",           // String: GPS X좌표 (경도)
+      "mapy": "33.4996",            // String: GPS Y좌표 (위도)
+      "contentid": 126508,          // int: 콘텐츠 ID
+      "contenttypeid": 12,          // int: 콘텐츠 타입 ID
+      "tel": "064-710-7850",        // String: 전화번호
+      "zipcode": "63563",           // String: 우편번호
+      "overview": "한라산은 제주도 중앙부에...", // String: 개요
+      "cat1": "A01",                // String: 대분류 카테고리
+      "cat2": "A0101",              // String: 중분류 카테고리
+      "cat3": "A01010100"           // String: 소분류 카테고리
+    }
+  ],
+  "accommodations": [               // List<TourItem>: 숙박시설 목록
+    {
+      "title": "제주 롯데호텔",      // String: 숙박시설명
+      "addr1": "제주특별자치도 서귀포시 중문관광로 72-35",
+      "addr2": "",
+      "firstimage": "https://example.com/lotte-hotel.jpg",
+      "mapx": "126.4177",
+      "mapy": "33.2489",
+      "contentid": 125266,
+      "contenttypeid": 32,
+      "tel": "064-731-1000",
+      "zipcode": "63535",
+      "overview": "제주 중문 관광단지에 위치한...",
+      "cat1": "B02",
+      "cat2": "B0201",
+      "cat3": "B02010100"
+    }
+  ],
+  "restaurants": [                  // List<TourItem>: 음식점 목록
+    {
+      "title": "올레국수",          // String: 음식점명
+      "addr1": "제주특별자치도 제주시 관덕로14길 24",
+      "addr2": "(삼도일동)",
+      "firstimage": "https://example.com/olle-noodle.jpg",
+      "mapx": "126.5209",
+      "mapy": "33.5145",
+      "contentid": 1234567,
+      "contenttypeid": 39,
+      "tel": "064-722-9922",
+      "zipcode": "63165",
+      "overview": "제주 전통 고기국수 전문점...",
+      "cat1": "A05",
+      "cat2": "A0502",
+      "cat3": "A05020100"
+    }
+  ]
 }
 ```
+
+**TourItem**
+```json
+{
+  "title": "제주 한라산",            // String: 콘텐츠 명칭
+  "addr1": "제주특별자치도 제주시 1100로 2070-61", // String: 주소 (기본)
+  "addr2": "(영실동)",              // String: 주소 (상세)
+  "firstimage": "https://example.com/hanla.jpg", // String: 대표 이미지 URL
+  "mapx": "126.5219",               // String: GPS X좌표 (경도)
+  "mapy": "33.4996",                // String: GPS Y좌표 (위도)
+  "contentid": 126508,              // int: 콘텐츠 ID
+  "contenttypeid": 12,              // int: 콘텐츠 타입 ID (12: 관광지, 32: 숙박, 39: 음식점)
+  "tel": "064-710-7850",            // String: 전화번호
+  "zipcode": "63563",               // String: 우편번호
+  "overview": "한라산은 제주도 중앙부에 위치한...", // String: 개요 (상세 정보)
+  "cat1": "A01",                    // String: 대분류 카테고리 코드
+  "cat2": "A0101",                  // String: 중분류 카테고리 코드
+  "cat3": "A01010100"               // String: 소분류 카테고리 코드
+}
+```
+
+### 🔍 API 사용 패턴별 분류
+
+#### 📍 지역 기반 조회 (도/시 기반)
+- `/api/tour-infos` - 통합 관광 정보
+- `/api/tour-infos/attractions` - 관광지만
+- `/api/tour-infos/restaurants` - 음식점만  
+- `/api/tour-infos/accommodations` - 숙박시설만
+- `/api/tour-infos/accommodations/by-course-type` - 코스 타입별 숙박
+
+**Parameters:**
+- `province`: 도/특별시/광역시 (예: "제주특별자치도")
+- `city`: 시/군/구 (예: "제주시")
+- `courseType`: 코스 타입 ("luxury", "value", "resort", "theme")
+
+#### 🎯 좌표 기반 조회 (주변 반경)
+- `/api/tour-infos/nearby` - 통합 주변 관광 정보
+- `/api/tour-infos/nearby/attractions` - 주변 관광지만
+- `/api/tour-infos/nearby/restaurants` - 주변 음식점만
+- `/api/tour-infos/nearby/accommodations` - 주변 숙박시설만
+- `/api/tour-infos/nearby/accommodations/by-course-type` - 주변 코스 타입별 숙박
+
+**Parameters:**
+- `mapX`: GPS X좌표 (경도, double)
+- `mapY`: GPS Y좌표 (위도, double)
+- `courseType`: 코스 타입
+
+#### ⛳ 골프장 기반 조회 (골프장 지역)
+- `/api/tour-infos/by-golf-course` - 골프장 지역 통합 정보
+- `/api/tour-infos/by-golf-course/attractions` - 골프장 지역 관광지
+- `/api/tour-infos/by-golf-course/restaurants` - 골프장 지역 음식점
+- `/api/tour-infos/by-golf-course/accommodations` - 골프장 지역 숙박시설
+
+**Parameters:**
+- `golfCourseId`: 골프장 ID (Long)
+
+#### 🏌️ 골프장 주변 조회 (골프장 좌표 기준)
+- `/api/tour-infos/nearby-golf-course` - 골프장 주변 통합 정보
+- `/api/tour-infos/nearby-golf-course/attractions` - 골프장 주변 관광지
+- `/api/tour-infos/nearby-golf-course/restaurants` - 골프장 주변 음식점
+- `/api/tour-infos/nearby-golf-course/accommodations` - 골프장 주변 숙박시설
+
+**Parameters:**
+- `golfCourseId`: 골프장 ID (Long)
+
+### 📊 콘텐츠 타입 ID 참고
+- **12**: 관광지
+- **32**: 숙박시설  
+- **39**: 음식점
 
 ---
 
