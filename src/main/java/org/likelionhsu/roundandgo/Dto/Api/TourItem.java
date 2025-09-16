@@ -15,6 +15,7 @@ public class TourItem {
     private String tel;             // 전화번호
     private String zipcode;         // 우편번호
     private String overview;        // 개요 (상세 조회 시만 나올 수도 있음)
+    private String dist;            // 거리 (m 단위) - 좌표 기반 검색 시 반환
 
     // ✅ 새로 추가
     private String cat1;
