@@ -357,14 +357,24 @@ public class CourseRecommendationService {
 
         StringBuilder prompt = new StringBuilder();
         prompt.append("제주도 골프 여행 당일치기 최적 코스 추천을 부탁드립니다.\n\n");
-        prompt.append("**임무:** 이동 거리를 최소화한 최적의 당일치기 코스를 추천하는 것이 목표입니다.\n\n");
+        prompt.append("**임무:** 이동 거리를 최소화하고 시간대 겹침을 방지한 최적의 당일치기 코스를 추천하는 것이 목표입니다.\n\n");
         prompt.append("**여행 정보:**\n");
         prompt.append("- 날짜: 오늘(당일치기)\n");
         prompt.append("- 골프장명: ").append(golfCourse.getName()).append("\n");
         prompt.append("- 주소: ").append(golfCourse.getAddress()).append("\n");
         prompt.append("- 티오프 시간: ").append(teeOffTime).append("\n");
-        prompt.append("- 예상 종료 시간: ").append(endTime).append("\n");
+        prompt.append("- 골프 예상 종료 시간: ").append(endTime).append("\n");
         prompt.append("- 코스 타입: ").append(resolveLabel(courseType)).append("\n\n");
+
+        // 시간 제약 조건 추가
+        LocalTime lunchTime = endTime.plusMinutes(30); // 골프 종료 30분 후 점심
+        LocalTime tourTime = lunchTime.plusHours(1).plusMinutes(30); // 점심 1시간 30분 후 관광
+
+        prompt.append("**시간 제약 조건 (매우 중요):**\n");
+        prompt.append("- 골프 시간: ").append(teeOffTime).append(" ~ ").append(endTime).append("\n");
+        prompt.append("- 권장 점심 시간: ").append(lunchTime).append(" 이후 (골프 종료 후 이동 시간 고려)\n");
+        prompt.append("- 권장 관광 시간: ").append(tourTime).append(" 이후 (점심 후 이동 시간 고려)\n");
+        prompt.append("- 반드시 골프 시간과 겹치지 않도록 해주세요!\n\n");
 
         if (userPreferences != null && !userPreferences.trim().isEmpty()) {
             prompt.append("**사용자 선호사항:**\n");
@@ -382,10 +392,11 @@ public class CourseRecommendationService {
         prompt.append("\n**중요한 요청사항:**\n");
         prompt.append("1. 당일치기이므로 음식점, 관광지 각각 1곳씩만 추천해주세요 (숙소 제외).\n");
         prompt.append("2. 골프장과의 이동 거리를 최소화하여 효율적인 동선을 고려해주세요.\n");
-        prompt.append("3. 각 카테고리별로 최적의 장소를 선정하고, 추천 이유도 간단히 설명해주세요.\n");
+        prompt.append("3. 각 활동 간 이동 시간을 최소 30분씩 확보해주세요.\n");
         prompt.append("4. 장소명은 반드시 위 목록에 있는 곳에서만 선택해주세요.\n");
         prompt.append("5. 음식점과 관광지는 서로 다른 곳으로 추천해주세요.\n");
-        prompt.append("6. 이동 시간과 거리를 고려한 최적의 여행 루트를 제안해주세요.\n\n");
+        prompt.append("6. 골프 종료 시간(").append(endTime).append(") 이후에만 다른 활동이 가능합니다.\n");
+        prompt.append("7. 이동 시간과 거리를 고려한 최적의 여행 루트: 골프장 → 음식점 → 관광지 순서로 제안해주세요.\n\n");
 
         // 다양성 참고 정보 추가 (buildMultiDayPromptForGpt와 유사)
         long currentTime = System.currentTimeMillis();
@@ -409,7 +420,7 @@ public class CourseRecommendationService {
 
         StringBuilder prompt = new StringBuilder();
         prompt.append("제주도 ").append(travelDays).append("일 골프 여행 최적 코스 추천을 부탁드립니다.\n\n");
-        prompt.append("**임무:** 이동 거리를 최소화한 최적의 ").append(travelDays).append("일 골프 여행 코스를 추천하는 것이 목표입니다.\n\n");
+        prompt.append("**임무:** 이동 거리를 최소화하고 시간대 겹침을 방지한 최적의 ").append(travelDays).append("일 골프 여행 코스를 추천하는 것이 목표입니다.\n\n");
         prompt.append("**여행 기간:** ").append(startDate).append("부터 ").append(travelDays).append("일간\n");
         prompt.append("**코스 타입:** ").append(resolveLabel(courseType)).append("\n\n");
 
@@ -418,19 +429,30 @@ public class CourseRecommendationService {
             prompt.append(userPreferences).append("\n\n");
         }
 
+        // 각 일차별 상세 시간 계획 추가
         for (int i = 0; i < travelDays; i++) {
-            prompt.append("**").append(i + 1).append("일차 계획:**\n");
+            LocalTime teeOffTime = LocalTime.parse(teeOffTimes.get(i));
+            LocalTime golfEndTime = teeOffTime.plusHours(4).plusMinutes(30);
+            LocalTime lunchTime = golfEndTime.plusMinutes(30);
+            LocalTime tourTime = lunchTime.plusHours(1).plusMinutes(30);
+
+            prompt.append("**").append(i + 1).append("일차 시간 계획:**\n");
             prompt.append("- 골프장 ID: ").append(golfCourseIds.get(i)).append("\n");
-            prompt.append("- 티오프 시간: ").append(teeOffTimes.get(i)).append("\n\n");
+            prompt.append("- 골프 시간: ").append(teeOffTime).append(" ~ ").append(golfEndTime).append("\n");
+            prompt.append("- 권장 점심 시간: ").append(lunchTime).append(" 이후 (골프 종료 후 이동시간 고려)\n");
+            prompt.append("- 권장 관광 시간: ").append(tourTime).append(" 이후 (점심 후 이동시간 고려)\n");
+            prompt.append("- **중요:** 골프 시간과 다른 활동 시간이 절대 겹치면 안됩니다!\n\n");
         }
 
         prompt.append("**중요한 요청사항:**\n");
         prompt.append("1. 각 일차별로 서로 다른 음식점과 관광지를 추천해주세요 (중복 금지)\n");
         prompt.append("2. 숙소는 같아도 되지만, 음식점과 관광지는 반드시 다른 곳으로 선택해주세요\n");
         prompt.append("3. 골프장과의 이동 거리를 최소화하여 효율적인 동선을 고려해주세요\n");
-        prompt.append("4. 일차별로 다양성을 고려한 최적의 여행 코스를 추천해주세요\n");
-        prompt.append("5. 일차별로 음식점, 관광지, 숙소를 각각 1곳씩 추천해주세요\n");
-        prompt.append("6. 이동 시간과 거리를 고려한 최적의 여행 루트를 제안해주세요\n\n");
+        prompt.append("4. 각 활동 간 이동 시간을 최소 30분씩 확보해주세요\n");
+        prompt.append("5. 골프 종료 시간 이후에만 다른 활동이 가능합니다\n");
+        prompt.append("6. 일차별로 음식점, 관광지, 숙소를 각각 1곳씩 추천해주세요\n");
+        prompt.append("7. 최적 동선: 골프장 → 음식점 → 관광지 → 숙소 순서로 제안해주세요\n");
+        prompt.append("8. 일차별로 다양성을 고려한 최적의 여행 코스를 추천해주세요\n\n");
 
         // 현재 시간을 기반으로 다양성 추가
         long currentTime = System.currentTimeMillis();
@@ -757,27 +779,59 @@ public class CourseRecommendationService {
             String date,  // 예시: "2025-08-15"
             CourseRecommendation courseRecommendation
     ) {
-        // (1) 골프장 일정
+        LocalTime teeOffTime = courseRecommendation.getTeeOffTime();
+        LocalTime golfEndTime = courseRecommendation.getEndTime();
+
+        // (1) 골프장 일정 - 실제 시간대로 설정
         ScheduleRequestDto golfSchedule = new ScheduleRequestDto();
         golfSchedule.setTitle("[라운딩] " + golfCourse.getName());
-        golfSchedule.setAllDay(true);
+        golfSchedule.setAllDay(false); // 시간 지정으로 변경
         golfSchedule.setCategory("라운딩");
         golfSchedule.setLocation(golfCourse.getAddress());
         golfSchedule.setColor(ScheduleColor.GREEN);
-        String startDateTime = date + "T00:00:00";
-        String endDateTime = date + "T23:59:59";
-        scheduleService.createSchedule(user, golfSchedule, startDateTime , endDateTime);
+        String golfStartDateTime = date + "T" + teeOffTime.toString() + ":00";
+        String golfEndDateTime = date + "T" + golfEndTime.toString() + ":00";
+        scheduleService.createSchedule(user, golfSchedule, golfStartDateTime, golfEndDateTime);
 
-        // (2) 추천 장소(음식점, 관광지, 숙소) 일정
+        // (2) 추천 장소(음식점, 관광지, 숙소) 일정 - 시간 간격을 두고 생성
         List<RecommendedPlace> recommendedPlaces = courseRecommendation.getRecommendedPlaces();
+
+        LocalTime currentTime = golfEndTime.plusMinutes(30); // 골프 종료 30분 후부터 시작
+
         for (RecommendedPlace place : recommendedPlaces) {
             ScheduleRequestDto placeSchedule = new ScheduleRequestDto();
             placeSchedule.setTitle("[추천] " + place.getName());
-            placeSchedule.setAllDay(true);
+            placeSchedule.setAllDay(false); // 시간 지정으로 변경
             placeSchedule.setCategory(place.getType());
             placeSchedule.setLocation(place.getAddress());
             placeSchedule.setColor(ScheduleColor.BLUE);
-            scheduleService.createSchedule(user, placeSchedule, startDateTime, endDateTime);
+
+            // 장소 유형에 따라 적절한 시간 배정
+            LocalTime endTime;
+            switch (place.getType()) {
+                case "food" -> {
+                    endTime = currentTime.plusHours(1).plusMinutes(30); // 음식점 1시간 30분
+                }
+                case "tour" -> {
+                    endTime = currentTime.plusHours(2); // 관광지 2시간
+                }
+                case "stay" -> {
+                    endTime = LocalTime.of(23, 59); // 숙소는 저녁까지
+                }
+                default -> {
+                    endTime = currentTime.plusHours(1); // 기본 1시간
+                }
+            }
+
+            String placeStartDateTime = date + "T" + currentTime.toString() + ":00";
+            String placeEndDateTime = date + "T" + endTime.toString() + ":00";
+
+            scheduleService.createSchedule(user, placeSchedule, placeStartDateTime, placeEndDateTime);
+
+            // 다음 장소를 위한 시간 업데이트 (이동 시간 30분 추가)
+            if (!place.getType().equals("stay")) {
+                currentTime = endTime.plusMinutes(30);
+            }
         }
     }
 
