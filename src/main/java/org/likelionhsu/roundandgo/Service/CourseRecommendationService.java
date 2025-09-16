@@ -356,8 +356,9 @@ public class CourseRecommendationService {
             String userPreferences) {
 
         StringBuilder prompt = new StringBuilder();
-        prompt.append("제주도 골프 여행 코스 추천을 부탁드립니다.\n\n");
-        prompt.append("**골프장 정보:**\n");
+        prompt.append("제주도 골프 여행 당일치기 코스 추천을 부탁드립니다.\n\n");
+        prompt.append("**여행 정보:**\n");
+        prompt.append("- 날짜: 오늘(당일치기)\n");
         prompt.append("- 골프장명: ").append(golfCourse.getName()).append("\n");
         prompt.append("- 주소: ").append(golfCourse.getAddress()).append("\n");
         prompt.append("- 티오프 시간: ").append(teeOffTime).append("\n");
@@ -381,10 +382,19 @@ public class CourseRecommendationService {
         stayList.stream().limit(10).forEach(stay ->
             prompt.append("- ").append(stay.getName()).append(" (").append(stay.getAddress()).append(")\n"));
 
-        prompt.append("\n**요청사항:**\n");
-        prompt.append("위 정보를 바탕으로 최적의 음식점 1곳, 관광지 1곳, 숙소 1곳을 추천해주세요.\n");
-        prompt.append("추천 이유와 함께 정확한 장소명을 제시해주세요.\n");
-        prompt.append("응답 형식: [음식점] 장소명 | [관광지] 장소명 | [숙소] 장소명");
+        prompt.append("\n**중요한 요청사항:**\n");
+        prompt.append("1. 음식점, 관광지, 숙소 각각 1곳씩 추천해주세요.\n");
+        prompt.append("2. 각 카테고리별로 최적의 장소를 선정하고, 추천 이유도 간단히 설명해주세요.\n");
+        prompt.append("3. 장소명은 반드시 위 목록에 있는 곳에서만 선택해주세요.\n");
+        prompt.append("4. 음식점, 관광지, 숙소는 서로 다른 곳으로 추천해주세요.\n\n");
+
+        // 다양성 참고 정보 추가 (buildMultiDayPromptForGpt와 유사)
+        long currentTime = System.currentTimeMillis();
+        prompt.append("**참고정보:** 추천 요청 시각: ").append(currentTime % 10000).append("\n");
+        prompt.append("위 시각 정보를 참고하여 더욱 다양한 추천을 제공해주세요.\n\n");
+
+        prompt.append("응답 형식: [음식점] 장소명 | [관광지] 장소명 | [숙소] 장소명\n");
+        prompt.append("예시: [음식점] 제주흑돼지맛집 | [관광지] 성산일출봉 | [숙소] 제주신라호텔");
 
         return prompt.toString();
     }

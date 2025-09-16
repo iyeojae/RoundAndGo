@@ -61,7 +61,7 @@ public class AuthController {
 
     /*
     // 만약 기존 로그인 로직을 유지하려면 다른 경로 사용
-    @PostMapping("/login-manual")
+    @PostMapping("/login")
     public ResponseEntity<CommonResponse<LoginResponseDto>> loginManual(@RequestBody LoginRequestDto request) {
         // 기존 로그인 로직 유지 (백업용)
         UsernamePasswordAuthenticationToken token =
