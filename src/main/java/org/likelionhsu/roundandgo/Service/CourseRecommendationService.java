@@ -356,55 +356,73 @@ public class CourseRecommendationService {
             String userPreferences) {
 
         StringBuilder prompt = new StringBuilder();
-        prompt.append("제주도 골프 여행 당일치기 최적 코스 추천을 부탁드립니다.\n\n");
-        prompt.append("**임무:** 이동 거리를 최소화하고 시간대 겹침을 방지한 최적의 당일치기 코스를 추천하는 것이 목표입니다.\n\n");
+        prompt.append("제주도 골프 여행 최적 일정 추천을 부탁드립니다.\n\n");
+        prompt.append("**임무:** 골프 이후 시간을 활용한 최적의 여행 일정을 자유롭게 구성해주세요.\n\n");
         prompt.append("**여행 정보:**\n");
-        prompt.append("- 날짜: 오늘(당일치기)\n");
         prompt.append("- 골프장명: ").append(golfCourse.getName()).append("\n");
         prompt.append("- 주소: ").append(golfCourse.getAddress()).append("\n");
-        prompt.append("- 티오프 시간: ").append(teeOffTime).append("\n");
-        prompt.append("- 골프 예상 종료 시간: ").append(endTime).append("\n");
+        prompt.append("- 골프 시간: ").append(teeOffTime).append(" ~ ").append(endTime).append("\n");
         prompt.append("- 코스 타입: ").append(resolveLabel(courseType)).append("\n\n");
 
-        // 시간 제약 조건 추가
-        LocalTime lunchTime = endTime.plusMinutes(30); // 골프 종료 30분 후 점심
-        LocalTime tourTime = lunchTime.plusHours(1).plusMinutes(30); // 점심 1시간 30분 후 관광
+        // 시간 제약 조건
+        LocalTime availableStartTime = endTime.plusMinutes(30); // 골프 종료 30분 후부터 가능
 
-        prompt.append("**시간 제약 조건 (매우 중요):**\n");
-        prompt.append("- 골프 시간: ").append(teeOffTime).append(" ~ ").append(endTime).append("\n");
-        prompt.append("- 권장 점심 시간: ").append(lunchTime).append(" 이후 (골프 종료 후 이동 시간 고려)\n");
-        prompt.append("- 권장 관광 시간: ").append(tourTime).append(" 이후 (점심 후 이동 시간 고려)\n");
-        prompt.append("- 반드시 골프 시간과 겹치지 않도록 해주세요!\n\n");
+        prompt.append("**시간 제약 조건:**\n");
+        prompt.append("- 골프 종료: ").append(endTime).append("\n");
+        prompt.append("- 추가 활동 가능 시간: ").append(availableStartTime).append(" 이후\n");
+        prompt.append("- 골프 시간과 절대 겹치지 않도록 해주세요!\n\n");
 
         if (userPreferences != null && !userPreferences.trim().isEmpty()) {
             prompt.append("**사용자 선호사항:**\n");
             prompt.append(userPreferences).append("\n\n");
         }
 
-        prompt.append("**이용 가능한 음식점 목록:**\n");
-        foodList.stream().limit(10).forEach(food ->
+        prompt.append("**이용 가능한 장소 옵션:**\n\n");
+
+        prompt.append("**음식점 옵션 (필요시 선택):**\n");
+        foodList.stream().limit(15).forEach(food ->
             prompt.append("- ").append(food.getName()).append(" (").append(food.getAddress()).append(")\n"));
 
-        prompt.append("\n**이용 가능한 관광지 목록:**\n");
-        tourList.stream().limit(10).forEach(tour ->
+        prompt.append("\n**관광지 옵션 (필요시 선택):**\n");
+        tourList.stream().limit(15).forEach(tour ->
             prompt.append("- ").append(tour.getName()).append(" (").append(tour.getAddress()).append(")\n"));
 
-        prompt.append("\n**중요한 요청사항:**\n");
-        prompt.append("1. 당일치기이므로 음식점, 관광지 각각 1곳씩만 추천해주세요 (숙소 제외).\n");
-        prompt.append("2. 골프장과의 이동 거리를 최소화하여 효율적인 동선을 고려해주세요.\n");
-        prompt.append("3. 각 활동 간 이동 시간을 최소 30분씩 확보해주세요.\n");
-        prompt.append("4. 장소명은 반드시 위 목록에 있는 곳에서만 선택해주세요.\n");
-        prompt.append("5. 음식점과 관광지는 서로 다른 곳으로 추천해주세요.\n");
-        prompt.append("6. 골프 종료 시간(").append(endTime).append(") 이후에만 다른 활동이 가능합니다.\n");
-        prompt.append("7. 이동 시간과 거리를 고려한 최적의 여행 루트: 골프장 → 음식점 → 관광지 순서로 제안해주세요.\n\n");
+        if (!stayList.isEmpty()) {
+            prompt.append("\n**숙소 옵션 (숙박 필요시 선택):**\n");
+            stayList.stream().limit(10).forEach(stay ->
+                prompt.append("- ").append(stay.getName()).append(" (").append(stay.getAddress()).append(")\n"));
+        }
 
-        // 다양성 참고 정보 추가 (buildMultiDayPromptForGpt와 유사)
+        prompt.append("\n**추천 가이드라인:**\n");
+        prompt.append("1. **자유로운 일정 구성**: 꼭 음식점+관광지+숙소 조합이 아니어도 됩니다\n");
+        prompt.append("2. **실용적 추천**: \n");
+        prompt.append("   - 점심 시간대(12:00-15:00)라면 식사 장소 추천\n");
+        prompt.append("   - 저녁 시간대(17:00-20:00)라면 저녁 식사 고려\n");
+        prompt.append("   - 늦은 시간이면 간단한 카페나 휴식 공간도 좋음\n");
+        prompt.append("   - 당일 여행이면 숙소 불필요\n");
+        prompt.append("   - 1박2일이면 숙소 필요\n");
+        prompt.append("3. **이동 거리 최소화**: 골프장 근처 장소 우선 고려\n");
+        prompt.append("4. **시간 효율성**: 각 활동 간 30분 이동 시간 확보\n");
+        prompt.append("5. **다양한 패턴 가능**:\n");
+        prompt.append("   - 점심만 (골프 후 점심 후 귀가)\n");
+        prompt.append("   - 점심 + 관광 (오후 여행)\n");
+        prompt.append("   - 점심 + 관광 + 저녁\n");
+        prompt.append("   - 관광 + 저녁 (점심 생략)\n");
+        prompt.append("   - 카페 + 쇼핑 등 자유로운 조합\n\n");
+
+        prompt.append("**응답 형식:**\n");
+        prompt.append("추천하고 싶은 장소들을 | 구분자로 나열해주세요.\n");
+        prompt.append("장소명은 반드시 위에 제공된 목록에서 선택해주세요.\n\n");
+        prompt.append("예시:\n");
+        prompt.append("- 점심만: 제주흑돼지맛집\n");
+        prompt.append("- 점심+관광: 제주흑돼지맛집|성산일출봉\n");
+        prompt.append("- 점심+관광+숙소: 제주흑돼지맛집|성산일출봉|제주신라호텔\n");
+        prompt.append("- 관광+저녁: 성산일출봉|해산물뚝배기\n\n");
+
+        // 다양성 참고 정보
         long currentTime = System.currentTimeMillis();
         prompt.append("**참고정보:** 추천 요청 시각: ").append(currentTime % 10000).append("\n");
-        prompt.append("위 시각 정보를 참고하여 더욱 다양한 추천을 제공해주세요.\n\n");
-
-        prompt.append("응답 형식: [음식점] 장소명 | [관광지] 장소명\n");
-        prompt.append("예시: [음식점] 제주흑돼지맛집 | [관광지] 성산일출봉");
+        prompt.append("골프 종료 시간과 현재 상황을 고려하여 가장 적절한 일정을 자유롭게 추천해주세요.");
 
         return prompt.toString();
     }
@@ -465,7 +483,7 @@ public class CourseRecommendationService {
         return prompt.toString();
     }
 
-    // GPT 응답 파싱 메서드 (단일일)
+    // GPT 응답 파싱 메서드 (단일일) - 자유로운 일정 구성 지원
     private List<RecommendedPlaceDto> parseGptRecommendation(
             String gptResponse,
             List<RecommendedPlaceDto> foodList,
@@ -475,193 +493,108 @@ public class CourseRecommendationService {
         List<RecommendedPlaceDto> selectedPlaces = new ArrayList<>();
 
         try {
-            // GPT 응답에서 장소명 추출하여 매칭
-            RecommendedPlaceDto selectedFood = findBestMatch(gptResponse, foodList, "음식점");
-            RecommendedPlaceDto selectedTour = findBestMatch(gptResponse, tourList, "관광지");
+            System.out.println("=== GPT Response Parsing (Flexible) ===");
+            System.out.println("GPT Response: " + gptResponse);
 
-            // 당일치기에서는 숙소 제외
-            if (selectedFood != null) selectedPlaces.add(selectedFood);
-            if (selectedTour != null) selectedPlaces.add(selectedTour);
+            // GPT 응답을 | 구분자로 분리
+            String[] recommendedPlaceNames = gptResponse.split("\\|");
+
+            System.out.println("Split places count: " + recommendedPlaceNames.length);
+
+            // 각 장소명에 대해 전체 카테고리에서 매칭 시도
+            for (String placeName : recommendedPlaceNames) {
+                placeName = placeName.trim();
+
+                // 태그 제거 ([음식점], [관광지], [숙소] 등)
+                placeName = placeName.replaceAll("\\[.*?\\]", "").trim();
+
+                if (placeName.isEmpty()) continue;
+
+                System.out.println("Trying to match: " + placeName);
+
+                RecommendedPlaceDto matchedPlace = null;
+
+                // 1. 음식점에서 찾기
+                matchedPlace = findExactMatch(placeName, foodList);
+                if (matchedPlace != null) {
+                    System.out.println("Found in food: " + matchedPlace.getName());
+                    selectedPlaces.add(matchedPlace);
+                    continue;
+                }
+
+                // 2. 관광지에서 찾기
+                matchedPlace = findExactMatch(placeName, tourList);
+                if (matchedPlace != null) {
+                    System.out.println("Found in tour: " + matchedPlace.getName());
+                    selectedPlaces.add(matchedPlace);
+                    continue;
+                }
+
+                // 3. 숙소에서 찾기
+                matchedPlace = findExactMatch(placeName, stayList);
+                if (matchedPlace != null) {
+                    System.out.println("Found in stay: " + matchedPlace.getName());
+                    selectedPlaces.add(matchedPlace);
+                    continue;
+                }
+
+                System.out.println("No exact match found for: " + placeName);
+            }
+
+            System.out.println("Final selected places count: " + selectedPlaces.size());
 
         } catch (Exception e) {
-            // GPT 파싱 실패시 기본 추천 방식 사용 (당일치기에서는 숙소 제외)
-            RecommendedPlaceDto food = foodList.stream().findFirst().orElse(null);
-            RecommendedPlaceDto tour = tourList.stream().findFirst().orElse(null);
+            System.out.println("GPT parsing error: " + e.getMessage());
 
-            if (food != null) selectedPlaces.add(food);
-            if (tour != null) selectedPlaces.add(tour);
+            // 파싱 실패시 기본 추천 - 시간대에 따라 적절한 장소 선택
+            LocalTime currentTime = LocalTime.now();
+
+            if (currentTime.isBefore(LocalTime.of(15, 0))) {
+                // 오후 3시 이전이면 점심 추천
+                RecommendedPlaceDto food = foodList.stream().findFirst().orElse(null);
+                if (food != null) selectedPlaces.add(food);
+            }
+
+            if (currentTime.isBefore(LocalTime.of(18, 0))) {
+                // 오후 6시 이전이면 관광지 추천
+                RecommendedPlaceDto tour = tourList.stream().findFirst().orElse(null);
+                if (tour != null) selectedPlaces.add(tour);
+            }
         }
 
-        return selectedPlaces.stream().filter(place -> place != null).toList();
+        return selectedPlaces;
     }
 
-    // GPT 응답 파싱 메서드 (다일차)
-    private List<RecommendedPlaceDto> parseMultiDayGptRecommendation(
-            String gptResponse,
-            Integer dayNumber,
-            List<RecommendedPlaceDto> foodList,
-            List<RecommendedPlaceDto> tourList,
-            List<RecommendedPlaceDto> stayList) {
-
-        List<RecommendedPlaceDto> selectedPlaces = new ArrayList<>();
-
-        // GPT 응답이 오류 메시지인 경우 다양성을 위한 랜덤 선택 사용
-        if (gptResponse.contains("오류가 발생했습니다") || gptResponse.contains("생성할 수 없습니다")) {
-            System.out.println("=== GPT Error - Using Diversified Default Recommendation ===");
-            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
-            return selectedPlaces;
-        }
-
-        try {
-            // GPT 응답에서 해당 일차의 추천 정보 추출
-            String dayPattern = dayNumber + "일차";
-            String dayRecommendation = extractDayRecommendation(gptResponse, dayPattern);
-
-            if (dayRecommendation != null && !dayRecommendation.trim().isEmpty()) {
-                RecommendedPlaceDto selectedFood = findBestMatch(dayRecommendation, foodList, "음식점");
-                RecommendedPlaceDto selectedTour = findBestMatch(dayRecommendation, tourList, "관광지");
-                RecommendedPlaceDto selectedStay = findBestMatch(dayRecommendation, stayList, "숙소");
-
-                if (selectedFood != null) selectedPlaces.add(selectedFood);
-                if (selectedTour != null) selectedPlaces.add(selectedTour);
-                if (selectedStay != null) selectedPlaces.add(selectedStay);
-
-                // GPT가 일부만 찾았을 경우 나머지는 다양성 로직으로 채움
-                if (selectedPlaces.size() < 3) {
-                    System.out.println("=== GPT Partial Match - Filling remaining with diversified selection ===");
-                    List<RecommendedPlaceDto> diversified = selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList);
-
-                    // 중복 제거하면서 추가
-                    for (RecommendedPlaceDto place : diversified) {
-                        if (selectedPlaces.stream().noneMatch(p -> p.getName().equals(place.getName()))) {
-                            selectedPlaces.add(place);
-                            if (selectedPlaces.size() >= 3) break;
-                        }
-                    }
-                }
-            } else {
-                System.out.println("=== GPT Day Pattern Not Found - Using Diversified Selection ===");
-                selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+    // 정확한 매칭을 위한 헬퍼 메서드
+    private RecommendedPlaceDto findExactMatch(String targetName, List<RecommendedPlaceDto> places) {
+        // 1. 정확한 이름 매칭
+        for (RecommendedPlaceDto place : places) {
+            if (place.getName().equals(targetName)) {
+                return place;
             }
-
-        } catch (Exception e) {
-            System.out.println("=== GPT Parsing Error - Using Diversified Default Recommendation ===");
-            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
         }
 
-        return selectedPlaces.stream().filter(place -> place != null).toList();
-    }
-
-    // 다양성을 위한 장소 선택 메서드
-    private List<RecommendedPlaceDto> selectDiversifiedPlaces(
-            Integer dayNumber,
-            List<RecommendedPlaceDto> foodList,
-            List<RecommendedPlaceDto> tourList,
-            List<RecommendedPlaceDto> stayList) {
-
-        List<RecommendedPlaceDto> selected = new ArrayList<>();
-
-        // 시간과 일차를 기반으로 한 다양화 인덱스 계산
-        long seed = System.currentTimeMillis() + (dayNumber * 1000);
-        java.util.Random random = new java.util.Random(seed);
-
-        // 음식점 선택 (다양화)
-        if (!foodList.isEmpty()) {
-            int foodIndex = (dayNumber - 1 + random.nextInt(5)) % foodList.size();
-            selected.add(foodList.get(foodIndex));
-            System.out.println("Selected food (index " + foodIndex + "): " + foodList.get(foodIndex).getName());
-        }
-
-        // 관광지 선택 (다양화)
-        if (!tourList.isEmpty()) {
-            int tourIndex = (dayNumber - 1 + random.nextInt(10) + 3) % tourList.size();
-            selected.add(tourList.get(tourIndex));
-            System.out.println("Selected tour (index " + tourIndex + "): " + tourList.get(tourIndex).getName());
-        }
-
-        // 숙소 선택 (일차별 다르게 하되 랜덤성 추가)
-        if (!stayList.isEmpty()) {
-            int stayIndex;
-            if (dayNumber == 1) {
-                stayIndex = random.nextInt(Math.min(3, stayList.size()));
-            } else {
-                stayIndex = (dayNumber - 1 + random.nextInt(3)) % stayList.size();
+        // 2. 부분 매칭 (양방향)
+        for (RecommendedPlaceDto place : places) {
+            if (place.getName().contains(targetName) || targetName.contains(place.getName())) {
+                return place;
             }
-            selected.add(stayList.get(stayIndex));
-            System.out.println("Selected stay (index " + stayIndex + "): " + stayList.get(stayIndex).getName());
         }
 
-        return selected;
-    }
-
-    // GPT 응답에서 최적 매칭 장소 찾기
-    private RecommendedPlaceDto findBestMatch(String gptResponse, List<RecommendedPlaceDto> places, String type) {
-        System.out.println("=== findBestMatch Debug ===");
-        System.out.println("type: " + type);
-        System.out.println("gptResponse: " + gptResponse);
-
-        // GPT 응답에서 해당 타입의 장소명만 추출 (| 구분자 사용)
-        String[] parts = gptResponse.split("\\|");
-        String targetPlaceName = null;
-
-        // 당일치기(2개 항목) vs 다일차(3개 항목) 구분
-        if (parts.length >= 2) {
-            switch (type) {
-                case "음식점" -> targetPlaceName = parts[0].trim();
-                case "관광지" -> {
-                    if (parts.length >= 2) {
-                        targetPlaceName = parts[1].trim();
-                    }
-                }
-                case "숙소" -> {
-                    if (parts.length >= 3) {
-                        targetPlaceName = parts[2].trim();
+        // 3. 키워드 매칭
+        String[] keywords = targetName.split("[\\s\\-]+");
+        for (String keyword : keywords) {
+            keyword = keyword.trim();
+            if (keyword.length() > 1) {
+                for (RecommendedPlaceDto place : places) {
+                    if (place.getName().contains(keyword)) {
+                        return place;
                     }
                 }
             }
         }
 
-        // 태그 제거 ([음식점], [관광지], [숙소] 등)
-        if (targetPlaceName != null) {
-            targetPlaceName = targetPlaceName.replaceAll("\\[.*?\\]", "").trim();
-        }
-
-        System.out.println("Extracted target place name: " + targetPlaceName);
-
-        if (targetPlaceName != null && !targetPlaceName.isEmpty()) {
-            // 1. 정확한 이름 매칭
-            for (RecommendedPlaceDto place : places) {
-                if (place.getName().equals(targetPlaceName)) {
-                    System.out.println("Exact match found: " + place.getName());
-                    return place;
-                }
-            }
-
-            // 2. 부분 매칭 (양방향)
-            for (RecommendedPlaceDto place : places) {
-                if (place.getName().contains(targetPlaceName) || targetPlaceName.contains(place.getName())) {
-                    System.out.println("Partial match found: " + place.getName());
-                    return place;
-                }
-            }
-
-            // 3. 키워드 매칭
-            String[] keywords = targetPlaceName.split("[\\s\\-]+");
-            for (String keyword : keywords) {
-                keyword = keyword.trim();
-                if (keyword.length() > 1) {
-                    for (RecommendedPlaceDto place : places) {
-                        if (place.getName().contains(keyword)) {
-                            System.out.println("Keyword match found: " + place.getName());
-                            return place;
-                        }
-                    }
-                }
-            }
-        }
-
-        System.out.println("No match found for type: " + type + ", using fallback");
-        return places.stream().findFirst().orElse(null);
+        return null;
     }
 
 
@@ -880,5 +813,94 @@ public class CourseRecommendationService {
             System.out.println("extractDayRecommendation error: " + e.getMessage());
             return null;
         }
+    }
+
+    // 다일차 GPT 응답 파싱 메서드 (다일차)
+    private List<RecommendedPlaceDto> parseMultiDayGptRecommendation(
+            String gptResponse,
+            Integer dayNumber,
+            List<RecommendedPlaceDto> foodList,
+            List<RecommendedPlaceDto> tourList,
+            List<RecommendedPlaceDto> stayList) {
+
+        List<RecommendedPlaceDto> selectedPlaces = new ArrayList<>();
+
+        // GPT 응답이 오류 메시지인 경우 다양성을 위한 랜덤 선택 사용
+        if (gptResponse.contains("오류가 발생했습니다") || gptResponse.contains("생성할 수 없습니다")) {
+            System.out.println("=== GPT Error - Using Diversified Default Recommendation ===");
+            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+            return selectedPlaces;
+        }
+
+        try {
+            // GPT 응답에서 해당 일차의 추천 정보 추출
+            String dayPattern = dayNumber + "일차";
+            String dayRecommendation = extractDayRecommendation(gptResponse, dayPattern);
+
+            if (dayRecommendation != null && !dayRecommendation.trim().isEmpty()) {
+                // 자유로운 파싱 로직 적용
+                String[] recommendedPlaceNames = dayRecommendation.split("\\|");
+
+                // 각 장소명에 대해 전체 카테고리에서 매칭 시도
+                for (String placeName : recommendedPlaceNames) {
+                    placeName = placeName.trim();
+                    placeName = placeName.replaceAll("\\[.*?\\]", "").trim();
+
+                    if (placeName.isEmpty()) continue;
+
+                    RecommendedPlaceDto matchedPlace = null;
+
+                    // 전체 카테고리에서 순차적으로 찾기
+                    matchedPlace = findExactMatch(placeName, foodList);
+                    if (matchedPlace != null) {
+                        selectedPlaces.add(matchedPlace);
+                        continue;
+                    }
+
+                    matchedPlace = findExactMatch(placeName, tourList);
+                    if (matchedPlace != null) {
+                        selectedPlaces.add(matchedPlace);
+                        continue;
+                    }
+
+                    matchedPlace = findExactMatch(placeName, stayList);
+                    if (matchedPlace != null) {
+                        selectedPlaces.add(matchedPlace);
+                        continue;
+                    }
+                }
+
+                // 최소한의 추천이 없다면 기본값으로 채우기
+                if (selectedPlaces.isEmpty()) {
+                    System.out.println("=== No matches found - Using diversified selection ===");
+                    selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+                }
+            } else {
+                System.out.println("=== GPT Day Pattern Not Found - Using Diversified Selection ===");
+                selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+            }
+
+        } catch (Exception e) {
+            System.out.println("=== GPT Parsing Error - Using Diversified Default Recommendation ===");
+            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+        }
+
+        return selectedPlaces;
+    }
+
+    // 다양성을 위한 기본 추천 장소 선택 메서드
+    private List<RecommendedPlaceDto> selectDiversifiedPlaces(Integer dayNumber, List<RecommendedPlaceDto> foodList, List<RecommendedPlaceDto> tourList, List<RecommendedPlaceDto> stayList) {
+        List<RecommendedPlaceDto> diversifiedPlaces = new ArrayList<>();
+
+        // 각 카테고리에서 하나씩 랜덤 선택
+        RecommendedPlaceDto randomFood = foodList.stream().findAny().orElse(null);
+        RecommendedPlaceDto randomTour = tourList.stream().findAny().orElse(null);
+        RecommendedPlaceDto randomStay = stayList.stream().findAny().orElse(null);
+
+        if (randomFood != null) diversifiedPlaces.add(randomFood);
+        if (randomTour != null) diversifiedPlaces.add(randomTour);
+        if (randomStay != null) diversifiedPlaces.add(randomStay);
+
+        return diversifiedPlaces;
     }
 }

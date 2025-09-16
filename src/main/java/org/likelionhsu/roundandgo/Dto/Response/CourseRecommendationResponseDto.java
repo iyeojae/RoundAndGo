@@ -68,22 +68,39 @@ public class CourseRecommendationResponseDto {
             String duration;
             String timeLabel;
 
-            // 장소 유형별 시간 설정
+            // 장소 유형별 시간 설정 및 동적 라벨 생성
             switch (place.getType()) {
                 case "food" -> {
                     endTime = startTime.plusHours(1).plusMinutes(30);
                     duration = "1시간 30분";
-                    timeLabel = "점심 시간";
+                    // 시간대에 따라 동적 라벨 생성
+                    if (startTime.isBefore(LocalTime.of(15, 0))) {
+                        timeLabel = "점심 시간";
+                    } else if (startTime.isBefore(LocalTime.of(20, 0))) {
+                        timeLabel = "저녁 시간";
+                    } else {
+                        timeLabel = "늦은 식사";
+                    }
                 }
                 case "tour" -> {
                     endTime = startTime.plusHours(2);
                     duration = "2시간";
-                    timeLabel = "관광 시간";
+                    if (startTime.isBefore(LocalTime.of(12, 0))) {
+                        timeLabel = "오전 관광";
+                    } else if (startTime.isBefore(LocalTime.of(17, 0))) {
+                        timeLabel = "오후 관광";
+                    } else {
+                        timeLabel = "저녁 관광";
+                    }
                 }
                 case "stay" -> {
                     endTime = LocalTime.of(23, 59);
                     duration = "숙박";
-                    timeLabel = "숙소 도착";
+                    if (startTime.isBefore(LocalTime.of(18, 0))) {
+                        timeLabel = "숙소 체크인";
+                    } else {
+                        timeLabel = "숙소 도착";
+                    }
                 }
                 default -> {
                     endTime = startTime.plusHours(1);
