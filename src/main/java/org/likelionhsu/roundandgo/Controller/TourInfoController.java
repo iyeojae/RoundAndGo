@@ -241,4 +241,79 @@ public class TourInfoController {
                         .build()
         );
     }
+
+    @GetMapping("/random-golf-course/attraction")
+    public ResponseEntity<CommonResponse<TourItem>> getRandomAttractionByGolfCourse(
+            @RequestParam Long golfCourseId) {
+
+        TourItem attraction = tourInfoService.getRandomAttractionByGolfCourse(golfCourseId);
+
+        if (attraction == null) {
+            return ResponseEntity.ok(
+                    CommonResponse.<TourItem>builder()
+                            .statusCode(HttpStatus.OK.value())
+                            .msg("골프장 주변 20km 이내에 관광지가 없습니다")
+                            .data(null)
+                            .build()
+            );
+        }
+
+        return ResponseEntity.ok(
+                CommonResponse.<TourItem>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("골프장 주변 무작위 관광지 조회 성공")
+                        .data(attraction)
+                        .build()
+        );
+    }
+
+    @GetMapping("/random-golf-course/restaurant")
+    public ResponseEntity<CommonResponse<TourItem>> getRandomRestaurantByGolfCourse(
+            @RequestParam Long golfCourseId) {
+
+        TourItem restaurant = tourInfoService.getRandomRestaurantByGolfCourse(golfCourseId);
+
+        if (restaurant == null) {
+            return ResponseEntity.ok(
+                    CommonResponse.<TourItem>builder()
+                            .statusCode(HttpStatus.OK.value())
+                            .msg("골프장 주변 20km 이내에 음식점이 없습니다")
+                            .data(null)
+                            .build()
+            );
+        }
+
+        return ResponseEntity.ok(
+                CommonResponse.<TourItem>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("골프장 주변 무작위 음식점 조회 성공")
+                        .data(restaurant)
+                        .build()
+        );
+    }
+
+    @GetMapping("/random-golf-course/accommodation")
+    public ResponseEntity<CommonResponse<TourItem>> getRandomAccommodationByGolfCourse(
+            @RequestParam Long golfCourseId) {
+
+        TourItem accommodation = tourInfoService.getRandomAccommodationByGolfCourse(golfCourseId);
+
+        if (accommodation == null) {
+            return ResponseEntity.ok(
+                    CommonResponse.<TourItem>builder()
+                            .statusCode(HttpStatus.OK.value())
+                            .msg("골프장 주변 20km 이내에 숙소가 없습니다")
+                            .data(null)
+                            .build()
+            );
+        }
+
+        return ResponseEntity.ok(
+                CommonResponse.<TourItem>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("골프장 주변 무작위 숙소 조회 성공")
+                        .data(accommodation)
+                        .build()
+        );
+    }
 }

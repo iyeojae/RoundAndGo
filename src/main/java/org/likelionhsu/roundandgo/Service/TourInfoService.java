@@ -406,4 +406,67 @@ public class TourInfoService {
 
         return accommodations;
     }
+
+    /**
+     * 골프장 ID를 기반으로 반경 20km 이내의 무작위 관광지 하나를 반환합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 무작위 관광지 하나 (없으면 null)
+     */
+    public TourItem getRandomAttractionByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        List<TourItem> attractions = fetchNearByAttractions(golfCourse.getLongitude(), golfCourse.getLatitude());
+
+        if (attractions.isEmpty()) {
+            return null;
+        }
+
+        // 무작위로 하나 선택
+        java.util.Random random = new java.util.Random();
+        return attractions.get(random.nextInt(attractions.size()));
+    }
+
+    /**
+     * 골프장 ID를 기반으로 반경 20km 이내의 무작위 음식점 하나를 반환합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 무작위 음식점 하나 (없으면 null)
+     */
+    public TourItem getRandomRestaurantByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        List<TourItem> restaurants = fetchNearByRestaurants(golfCourse.getLongitude(), golfCourse.getLatitude());
+
+        if (restaurants.isEmpty()) {
+            return null;
+        }
+
+        // 무작위로 하나 선택
+        java.util.Random random = new java.util.Random();
+        return restaurants.get(random.nextInt(restaurants.size()));
+    }
+
+    /**
+     * 골프장 ID를 기반으로 반경 20km 이내의 무작위 숙소 하나를 반환합니다.
+     *
+     * @param golfCourseId 골프장 ID
+     * @return 무작위 숙소 하나 (없으면 null)
+     */
+    public TourItem getRandomAccommodationByGolfCourse(Long golfCourseId) {
+        GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                .orElseThrow(() -> new RuntimeException("골프장을 찾을 수 없습니다."));
+
+        List<TourItem> accommodations = fetchNearByAccommodations(golfCourse.getLongitude(), golfCourse.getLatitude());
+
+        if (accommodations.isEmpty()) {
+            return null;
+        }
+
+        // 무작위로 하나 선택
+        java.util.Random random = new java.util.Random();
+        return accommodations.get(random.nextInt(accommodations.size()));
+    }
 }
