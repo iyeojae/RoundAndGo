@@ -334,4 +334,76 @@ public class TourInfoService {
                 .accommodationCount((int) allResults.stream().filter(item -> item.getContenttypeid() == 32).count())
                 .build();
     }
+
+    /**
+     * 제주도의 관광지를 키워드로 검색합니다.
+     *
+     * @param keyword 검색 키워드
+     * @return 검색된 관광지 리스트
+     */
+    public List<TourItem> searchJejuAttractions(String keyword) {
+        // 제주도 지역 코드: 39
+        int jejuAreaCode = 39;
+
+        List<TourItem> attractions = tourApiClient.fetchByContentTypes(jejuAreaCode, 0, List.of(12, 14, 15));
+
+        // 키워드가 있는 경우 필터링
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String lowerKeyword = keyword.toLowerCase();
+            attractions = attractions.stream()
+                    .filter(item -> item.getTitle() != null &&
+                                  item.getTitle().toLowerCase().contains(lowerKeyword))
+                    .toList();
+        }
+
+        return attractions;
+    }
+
+    /**
+     * 제주도의 음식점을 키워드로 검색합니다.
+     *
+     * @param keyword 검색 키워드
+     * @return 검색된 음식점 리스트
+     */
+    public List<TourItem> searchJejuRestaurants(String keyword) {
+        // 제주도 지역 코드: 39
+        int jejuAreaCode = 39;
+
+        List<TourItem> restaurants = tourApiClient.fetchByContentTypes(jejuAreaCode, 0, List.of(39));
+
+        // 키워드가 있는 경우 필터링
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String lowerKeyword = keyword.toLowerCase();
+            restaurants = restaurants.stream()
+                    .filter(item -> item.getTitle() != null &&
+                                  item.getTitle().toLowerCase().contains(lowerKeyword))
+                    .toList();
+        }
+
+        return restaurants;
+    }
+
+    /**
+     * 제주도의 숙소를 키워드로 검색합니다.
+     *
+     * @param keyword 검색 키워드
+     * @return 검색된 숙소 리스트
+     */
+    public List<TourItem> searchJejuAccommodations(String keyword) {
+        // 제주도 지역 코드: 39
+        int jejuAreaCode = 39;
+
+        List<TourItem> accommodations = tourApiClient.fetchByContentTypes(jejuAreaCode, 0, List.of(32));
+
+        // 키워드가 있는 경우 필터링
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String lowerKeyword = keyword.toLowerCase();
+            accommodations = accommodations.stream()
+                    .filter(item -> item.getTitle() != null &&
+                                  item.getTitle().toLowerCase().contains(lowerKeyword))
+                    .toList();
+        }
+
+        return accommodations;
+    }
 }

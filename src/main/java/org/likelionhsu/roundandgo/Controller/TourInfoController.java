@@ -196,4 +196,49 @@ public class TourInfoController {
                         .build()
         );
     }
+
+    @GetMapping("/jeju/search/attractions")
+    public ResponseEntity<CommonResponse<List<TourItem>>> searchJejuAttractions(
+            @RequestParam(required = false) String keyword) {
+
+        List<TourItem> attractions = tourInfoService.searchJejuAttractions(keyword);
+
+        return ResponseEntity.ok(
+                CommonResponse.<List<TourItem>>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("제주도 관광지 검색 성공")
+                        .data(attractions)
+                        .build()
+        );
+    }
+
+    @GetMapping("/jeju/search/restaurants")
+    public ResponseEntity<CommonResponse<List<TourItem>>> searchJejuRestaurants(
+            @RequestParam(required = false) String keyword) {
+
+        List<TourItem> restaurants = tourInfoService.searchJejuRestaurants(keyword);
+
+        return ResponseEntity.ok(
+                CommonResponse.<List<TourItem>>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("제주도 음식점 검색 성공")
+                        .data(restaurants)
+                        .build()
+        );
+    }
+
+    @GetMapping("/jeju/search/accommodations")
+    public ResponseEntity<CommonResponse<List<TourItem>>> searchJejuAccommodations(
+            @RequestParam(required = false) String keyword) {
+
+        List<TourItem> accommodations = tourInfoService.searchJejuAccommodations(keyword);
+
+        return ResponseEntity.ok(
+                CommonResponse.<List<TourItem>>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("제주도 숙소 검색 성공")
+                        .data(accommodations)
+                        .build()
+        );
+    }
 }
