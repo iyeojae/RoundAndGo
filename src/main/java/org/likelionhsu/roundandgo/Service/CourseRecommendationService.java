@@ -742,6 +742,11 @@ public class CourseRecommendationService {
                 .distanceKm(0.0)
                 .mapx(item.getMapx())
                 .mapy(item.getMapy())
+                // 시간 정보는 응답 생성 시점에서 계산되므로 여기서는 null로 설정
+                .startTime(null)
+                .endTime(null)
+                .duration(null)
+                .timeLabel(null)
                 .build();
     }
 
