@@ -32,6 +32,10 @@ public class ProfileImageService {
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
     public String uploadProfileImage(MultipartFile file, Long userId) {
+        return uploadProfileImageWithNickname(file, userId, null);
+    }
+
+    public String uploadProfileImageWithNickname(MultipartFile file, Long userId, String nickname) {
         validateFile(file);
 
         User user = userRepository.findById(userId)
@@ -49,6 +53,16 @@ public class ProfileImageService {
 
         // DB 업데이트
         user.setProfileImage(imageUrl);
+
+        // 닉네임이 제공된 경우 업데이트
+        if (nickname != null && !nickname.trim().isEmpty()) {
+            // 닉네임 중복 검사
+            if (userRepository.existsByNicknameAndIdNot(nickname.trim(), userId)) {
+                throw new RuntimeException("이미 사용 중인 닉네임입니다.");
+            }
+            user.setNickname(nickname.trim());
+        }
+
         userRepository.save(user);
 
         return imageUrl;
@@ -59,6 +73,11 @@ public class ProfileImageService {
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
         return user.getProfileImage();
+    }
+
+    public User getUserProfileInfo(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
     }
 
     public void deleteProfileImage(Long userId) {

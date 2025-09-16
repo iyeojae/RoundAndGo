@@ -11,4 +11,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ProfileImageResponseDto {
     private String url;
+    private String nickname;
 }

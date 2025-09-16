@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
 import org.likelionhsu.roundandgo.Dto.ProfileImageResponseDto;
+import org.likelionhsu.roundandgo.Entity.User;
 import org.likelionhsu.roundandgo.Security.UserDetailsImpl;
 import org.likelionhsu.roundandgo.Service.ProfileImageService;
 import org.springframework.http.ResponseEntity;
@@ -22,13 +23,19 @@ public class ProfileImageController {
     @PostMapping("/image")
     public ResponseEntity<CommonResponse<ProfileImageResponseDto>> uploadProfileImage(
             @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "nickname", required = false) String nickname,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         try {
-            String imageUrl = profileImageService.uploadProfileImage(file, userDetails.getUser().getId());
+            String imageUrl = profileImageService.uploadProfileImageWithNickname(
+                    file, userDetails.getUser().getId(), nickname);
+
+            // 업데이트된 사용자 정보 조회
+            User updatedUser = profileImageService.getUserProfileInfo(userDetails.getUser().getId());
 
             ProfileImageResponseDto response = ProfileImageResponseDto.builder()
                     .url(imageUrl)
+                    .nickname(updatedUser.getNickname())
                     .build();
 
             return ResponseEntity.ok(
@@ -54,10 +61,11 @@ public class ProfileImageController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         try {
-            String imageUrl = profileImageService.getProfileImageUrl(userDetails.getUser().getId());
+            User user = profileImageService.getUserProfileInfo(userDetails.getUser().getId());
 
             ProfileImageResponseDto response = ProfileImageResponseDto.builder()
-                    .url(imageUrl)
+                    .url(user.getProfileImage())
+                    .nickname(user.getNickname())
                     .build();
 
             return ResponseEntity.ok(
