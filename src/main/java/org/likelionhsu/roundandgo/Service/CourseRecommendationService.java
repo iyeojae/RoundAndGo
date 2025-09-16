@@ -356,7 +356,8 @@ public class CourseRecommendationService {
             String userPreferences) {
 
         StringBuilder prompt = new StringBuilder();
-        prompt.append("제주도 골프 여행 당일치기 코스 추천을 부탁드립니다.\n\n");
+        prompt.append("제주도 골프 여행 당일치기 최적 코스 추천을 부탁드립니다.\n\n");
+        prompt.append("**임무:** 이동 거리를 최소화한 최적의 당일치기 코스를 추천하는 것이 목표입니다.\n\n");
         prompt.append("**여행 정보:**\n");
         prompt.append("- 날짜: 오늘(당일치기)\n");
         prompt.append("- 골프장명: ").append(golfCourse.getName()).append("\n");
@@ -378,23 +379,21 @@ public class CourseRecommendationService {
         tourList.stream().limit(10).forEach(tour ->
             prompt.append("- ").append(tour.getName()).append(" (").append(tour.getAddress()).append(")\n"));
 
-        prompt.append("\n**이용 가능한 숙소 목록:**\n");
-        stayList.stream().limit(10).forEach(stay ->
-            prompt.append("- ").append(stay.getName()).append(" (").append(stay.getAddress()).append(")\n"));
-
         prompt.append("\n**중요한 요청사항:**\n");
-        prompt.append("1. 음식점, 관광지, 숙소 각각 1곳씩 추천해주세요.\n");
-        prompt.append("2. 각 카테고리별로 최적의 장소를 선정하고, 추천 이유도 간단히 설명해주세요.\n");
-        prompt.append("3. 장소명은 반드시 위 목록에 있는 곳에서만 선택해주세요.\n");
-        prompt.append("4. 음식점, 관광지, 숙소는 서로 다른 곳으로 추천해주세요.\n\n");
+        prompt.append("1. 당일치기이므로 음식점, 관광지 각각 1곳씩만 추천해주세요 (숙소 제외).\n");
+        prompt.append("2. 골프장과의 이동 거리를 최소화하여 효율적인 동선을 고려해주세요.\n");
+        prompt.append("3. 각 카테고리별로 최적의 장소를 선정하고, 추천 이유도 간단히 설명해주세요.\n");
+        prompt.append("4. 장소명은 반드시 위 목록에 있는 곳에서만 선택해주세요.\n");
+        prompt.append("5. 음식점과 관광지는 서로 다른 곳으로 추천해주세요.\n");
+        prompt.append("6. 이동 시간과 거리를 고려한 최적의 여행 루트를 제안해주세요.\n\n");
 
         // 다양성 참고 정보 추가 (buildMultiDayPromptForGpt와 유사)
         long currentTime = System.currentTimeMillis();
         prompt.append("**참고정보:** 추천 요청 시각: ").append(currentTime % 10000).append("\n");
         prompt.append("위 시각 정보를 참고하여 더욱 다양한 추천을 제공해주세요.\n\n");
 
-        prompt.append("응답 형식: [음식점] 장소명 | [관광지] 장소명 | [숙소] 장소명\n");
-        prompt.append("예시: [음식점] 제주흑돼지맛집 | [관광지] 성산일출봉 | [숙소] 제주신라호텔");
+        prompt.append("응답 형식: [음식점] 장소명 | [관광지] 장소명\n");
+        prompt.append("예시: [음식점] 제주흑돼지맛집 | [관광지] 성산일출봉");
 
         return prompt.toString();
     }
@@ -409,7 +408,8 @@ public class CourseRecommendationService {
             String userPreferences) {
 
         StringBuilder prompt = new StringBuilder();
-        prompt.append("제주도 ").append(travelDays).append("일 골프 여행 코스 추천을 부탁드립니다.\n\n");
+        prompt.append("제주도 ").append(travelDays).append("일 골프 여행 최적 코스 추천을 부탁드립니다.\n\n");
+        prompt.append("**임무:** 이동 거리를 최소화한 최적의 ").append(travelDays).append("일 골프 여행 코스를 추천하는 것이 목표입니다.\n\n");
         prompt.append("**여행 기간:** ").append(startDate).append("부터 ").append(travelDays).append("일간\n");
         prompt.append("**코스 타입:** ").append(resolveLabel(courseType)).append("\n\n");
 
@@ -427,8 +427,10 @@ public class CourseRecommendationService {
         prompt.append("**중요한 요청사항:**\n");
         prompt.append("1. 각 일차별로 서로 다른 음식점과 관광지를 추천해주세요 (중복 금지)\n");
         prompt.append("2. 숙소는 같아도 되지만, 음식점과 관광지는 반드시 다른 곳으로 선택해주세요\n");
-        prompt.append("3. 일차별로 다양성을 고려한 최적의 여행 코스를 추천해주세요\n");
-        prompt.append("4. 일차별로 음식점, 관광지, 숙소를 각각 1곳씩 추천해주세요\n\n");
+        prompt.append("3. 골프장과의 이동 거리를 최소화하여 효율적인 동선을 고려해주세요\n");
+        prompt.append("4. 일차별로 다양성을 고려한 최적의 여행 코스를 추천해주세요\n");
+        prompt.append("5. 일차별로 음식점, 관광지, 숙소를 각각 1곳씩 추천해주세요\n");
+        prompt.append("6. 이동 시간과 거리를 고려한 최적의 여행 루트를 제안해주세요\n\n");
 
         // 현재 시간을 기반으로 다양성 추가
         long currentTime = System.currentTimeMillis();
@@ -454,17 +456,18 @@ public class CourseRecommendationService {
             // GPT 응답에서 장소명 추출하여 매칭
             RecommendedPlaceDto selectedFood = findBestMatch(gptResponse, foodList, "음식점");
             RecommendedPlaceDto selectedTour = findBestMatch(gptResponse, tourList, "관광지");
-            RecommendedPlaceDto selectedStay = findBestMatch(gptResponse, stayList, "숙소");
 
+            // 당일치기에서는 숙소 제외
             if (selectedFood != null) selectedPlaces.add(selectedFood);
             if (selectedTour != null) selectedPlaces.add(selectedTour);
-            if (selectedStay != null) selectedPlaces.add(selectedStay);
 
         } catch (Exception e) {
-            // GPT 파싱 실패시 기본 추천 방식 사용
-            selectedPlaces.add(foodList.stream().findFirst().orElse(null));
-            selectedPlaces.add(tourList.stream().findFirst().orElse(null));
-            selectedPlaces.add(stayList.stream().findFirst().orElse(null));
+            // GPT 파싱 실패시 기본 추천 방식 사용 (당일치기에서는 숙소 제외)
+            RecommendedPlaceDto food = foodList.stream().findFirst().orElse(null);
+            RecommendedPlaceDto tour = tourList.stream().findFirst().orElse(null);
+
+            if (food != null) selectedPlaces.add(food);
+            if (tour != null) selectedPlaces.add(tour);
         }
 
         return selectedPlaces.stream().filter(place -> place != null).toList();
@@ -579,12 +582,26 @@ public class CourseRecommendationService {
         String[] parts = gptResponse.split("\\|");
         String targetPlaceName = null;
 
-        if (parts.length >= 3) {
+        // 당일치기(2개 항목) vs 다일차(3개 항목) 구분
+        if (parts.length >= 2) {
             switch (type) {
                 case "음식점" -> targetPlaceName = parts[0].trim();
-                case "관광지" -> targetPlaceName = parts[1].trim();
-                case "숙소" -> targetPlaceName = parts[2].trim();
+                case "관광지" -> {
+                    if (parts.length >= 2) {
+                        targetPlaceName = parts[1].trim();
+                    }
+                }
+                case "숙소" -> {
+                    if (parts.length >= 3) {
+                        targetPlaceName = parts[2].trim();
+                    }
+                }
             }
+        }
+
+        // 태그 제거 ([음식점], [관광지], [숙소] 등)
+        if (targetPlaceName != null) {
+            targetPlaceName = targetPlaceName.replaceAll("\\[.*?\\]", "").trim();
         }
 
         System.out.println("Extracted target place name: " + targetPlaceName);
