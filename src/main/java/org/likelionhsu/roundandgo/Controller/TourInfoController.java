@@ -3,6 +3,7 @@ package org.likelionhsu.roundandgo.Controller;
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
 import org.likelionhsu.roundandgo.Dto.Response.TourInfoResponseDto;
+import org.likelionhsu.roundandgo.Dto.Response.JejuIntegratedSearchDto;
 import org.likelionhsu.roundandgo.Dto.Api.TourItem;
 import org.likelionhsu.roundandgo.Service.TourInfoService;
 import org.springframework.http.HttpStatus;
@@ -179,5 +180,20 @@ public class TourInfoController {
     public ResponseEntity<List<TourItem>> fetchNearByAccommodationsByGolfCourse(
             @RequestParam Long golfCourseId) {
         return ResponseEntity.ok(tourInfoService.fetchNearByAccommodationsByGolfCourse(golfCourseId));
+    }
+
+    @GetMapping("/jeju/integrated-search")
+    public ResponseEntity<CommonResponse<JejuIntegratedSearchDto>> searchJejuIntegrated(
+            @RequestParam(required = false) String keyword) {
+
+        JejuIntegratedSearchDto response = tourInfoService.searchJejuIntegrated(keyword);
+
+        return ResponseEntity.ok(
+                CommonResponse.<JejuIntegratedSearchDto>builder()
+                        .statusCode(HttpStatus.OK.value())
+                        .msg("제주도 통합 검색 성공")
+                        .data(response)
+                        .build()
+        );
     }
 }

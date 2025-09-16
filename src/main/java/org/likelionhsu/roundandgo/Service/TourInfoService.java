@@ -2,6 +2,7 @@ package org.likelionhsu.roundandgo.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Dto.Response.TourInfoResponseDto;
+import org.likelionhsu.roundandgo.Dto.Response.JejuIntegratedSearchDto;
 import org.likelionhsu.roundandgo.Dto.Api.TourItem;
 import org.likelionhsu.roundandgo.Entity.GolfCourse;
 import org.likelionhsu.roundandgo.ExternalApi.TourApiClient;
@@ -293,5 +294,44 @@ public class TourInfoService {
         String city = parts[1];
 
         return new String[]{province, city};
+    }
+
+    /**
+     * 제주도의 관광지, 음식점, 숙소를 통합 검색합니다.
+     *
+     * @param keyword 검색 키워드 (선택사항)
+     * @return 제주도 통합 검색 결과
+     */
+    public JejuIntegratedSearchDto searchJejuIntegrated(String keyword) {
+        // 제주도 지역 코드: 39
+        int jejuAreaCode = 39;
+
+        List<TourItem> attractions = tourApiClient.fetchByContentTypes(jejuAreaCode, 0, List.of(12, 14, 15));
+        List<TourItem> restaurants = tourApiClient.fetchByContentTypes(jejuAreaCode, 0, List.of(39));
+        List<TourItem> accommodations = tourApiClient.fetchByContentTypes(jejuAreaCode, 0, List.of(32));
+
+        // 모든 결과를 하나의 리스트로 통합
+        List<TourItem> allResults = new java.util.ArrayList<>();
+        allResults.addAll(attractions);
+        allResults.addAll(restaurants);
+        allResults.addAll(accommodations);
+
+        // 키워드가 있는 경우 필터링
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String lowerKeyword = keyword.toLowerCase();
+            allResults = allResults.stream()
+                    .filter(item -> item.getTitle() != null &&
+                                  item.getTitle().toLowerCase().contains(lowerKeyword))
+                    .toList();
+        }
+
+        return JejuIntegratedSearchDto.builder()
+                .allResults(allResults)
+                .totalCount(allResults.size())
+                .attractionCount((int) allResults.stream().filter(item ->
+                    item.getContenttypeid() == 12 || item.getContenttypeid() == 14 || item.getContenttypeid() == 15).count())
+                .restaurantCount((int) allResults.stream().filter(item -> item.getContenttypeid() == 39).count())
+                .accommodationCount((int) allResults.stream().filter(item -> item.getContenttypeid() == 32).count())
+                .build();
     }
 }
