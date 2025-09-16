@@ -395,20 +395,21 @@ public class CourseRecommendationService {
 
         prompt.append("\n**추천 가이드라인:**\n");
         prompt.append("1. **자유로운 일정 구성**: 꼭 음식점+관광지+숙소 조합이 아니어도 됩니다\n");
-        prompt.append("2. **실용적 추천**: \n");
-        prompt.append("   - 점심 시간대(12:00-15:00)라면 식사 장소 추천\n");
-        prompt.append("   - 저녁 시간대(17:00-20:00)라면 저녁 식사 고려\n");
-        prompt.append("   - 늦은 시간이면 간단한 카페나 휴식 공간도 좋음\n");
-        prompt.append("   - 당일 여행이면 숙소 불필요\n");
-        prompt.append("   - 1박2일이면 숙소 필요\n");
+        prompt.append("2. **시간대별 추천 가이드**: \n");
+        prompt.append("   - 점심 시간대(12:00-15:00): 이 시간대라면 점심 식사를 포함하면 좋지만, 필수는 아닙니다\n");
+        prompt.append("   - 저녁 시간대(17:00-20:00): 이 시간대라면 저녁 식사를 포함하면 좋지만, 필수는 아닙니다\n");
+        prompt.append("   - 늦은 시간이면 간단한 카페나 휴식 공간도 좋습니다\n");
+        prompt.append("   - 당일 여행이면 숙소 불필요, 1박2일이면 숙소 필요\n");
         prompt.append("3. **이동 거리 최소화**: 골프장 근처 장소 우선 고려\n");
         prompt.append("4. **시간 효율성**: 각 활동 간 30분 이동 시간 확보\n");
-        prompt.append("5. **다양한 패턴 가능**:\n");
+        prompt.append("5. **중복 절대 금지**: 같은 장소를 중복으로 추천하지 마세요\n");
+        prompt.append("6. **다양한 패턴 가능**:\n");
         prompt.append("   - 점심만 (골프 후 점심 후 귀가)\n");
         prompt.append("   - 점심 + 관광 (오후 여행)\n");
         prompt.append("   - 점심 + 관광 + 저녁\n");
         prompt.append("   - 관광 + 저녁 (점심 생략)\n");
-        prompt.append("   - 카페 + 쇼핑 등 자유로운 조합\n\n");
+        prompt.append("   - 카페 + 쇼핑 등 자유로운 조합\n");
+        prompt.append("   - 시간대에 따라 적절한 활동 자유 선택\n\n");
 
         prompt.append("**응답 형식:**\n");
         prompt.append("추천하고 싶은 장소들을 | 구분자로 나열해주세요.\n");
@@ -463,14 +464,22 @@ public class CourseRecommendationService {
         }
 
         prompt.append("**중요한 요청사항:**\n");
-        prompt.append("1. 각 일차별로 서로 다른 음식점과 관광지를 추천해주세요 (중복 금지)\n");
-        prompt.append("2. 숙소는 같아도 되지만, 음식점과 관광지는 반드시 다른 곳으로 선택해주세요\n");
-        prompt.append("3. 골프장과의 이동 거리를 최소화하여 효율적인 동선을 고려해주세요\n");
-        prompt.append("4. 각 활동 간 이동 시간을 최소 30분씩 확보해주세요\n");
-        prompt.append("5. 골프 종료 시간 이후에만 다른 활동이 가능합니다\n");
-        prompt.append("6. 일차별로 음식점, 관광지, 숙소를 각각 1곳씩 추천해주세요\n");
-        prompt.append("7. 최적 동선: 골프장 → 음식점 → 관광지 → 숙소 순서로 제안해주세요\n");
-        prompt.append("8. 일차별로 다양성을 고려한 최적의 여행 코스를 추천해주세요\n\n");
+        prompt.append("1. **중복 절대 금지**: 각 일차별로 서로 다른 음식점과 관광지를 추천해주세요 (같은 장소 중복 추천 금지)\n");
+        prompt.append("2. **자유로운 일정 구성**: 골프장+음식점+관광지+숙소 고정 조합이 아니어도 됩니다\n");
+        prompt.append("3. **시간대별 적절한 추천**: \n");
+        prompt.append("   - 점심 시간대(12:00-15:00) 포함 시: 점심 식사를 포함하면 좋지만 필수 아님\n");
+        prompt.append("   - 저녁 시간대(17:00-20:00) 포함 시: 저녁 식사를 포함하면 좋지만 필수 아님\n");
+        prompt.append("   - 각 시간대에 강제로 식사만 하는 것이 아니라 상황에 맞는 활동 자유 선택\n");
+        prompt.append("4. **효율적 동선**: 골프장과의 이동 거리를 최소화하여 효율적인 동선 고려\n");
+        prompt.append("5. **시간 여유**: 각 활동 간 이동 시간을 최소 30분씩 확보\n");
+        prompt.append("6. **시간 겹침 방지**: 골프 종료 시간 이후에만 다른 활동 가능\n");
+        prompt.append("7. **다양한 패턴 허용**:\n");
+        prompt.append("   - 점심만 (골프 후 점심 후 귀가)\n");
+        prompt.append("   - 점심 + 관광 (오후 여행)\n");
+        prompt.append("   - 점심 + 관광 + 저녁 + 숙소\n");
+        prompt.append("   - 관광 + 저녁 + 숙소 (점심 생략)\n");
+        prompt.append("   - 카페 + 휴식 + 숙소 등 자유로운 조합\n");
+        prompt.append("8. **일차별 다양성**: 각 일차마다 다른 스타일의 여행 코스 제안\n\n");
 
         // 현재 시간을 기반으로 다양성 추가
         long currentTime = System.currentTimeMillis();
