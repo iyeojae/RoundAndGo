@@ -100,6 +100,31 @@ public class CommunityController {
     }
 
     /**
+     * 내 게시글 조회
+     * @param userDetails 현재 로그인한 사용자 정보
+     * @return 내가 작성한 게시글 응답 DTO 리스트
+     */
+    @GetMapping("/my")
+    public ResponseEntity<CommonResponse<List<CommunityResponseDto>>> getMyPosts(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        try {
+            List<CommunityResponseDto> myPosts = communityService.getPostsByUser(userDetails.getUser());
+            return ResponseEntity.ok(CommonResponse.<List<CommunityResponseDto>>builder()
+                    .statusCode(200)
+                    .msg("내 게시글 조회 성공")
+                    .data(myPosts)
+                    .build());
+        } catch (Exception e) {
+            log.error("내 게시글 조회 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    CommonResponse.<List<CommunityResponseDto>>builder()
+                            .statusCode(500)
+                            .msg("내 게시글 조회에 실패했습니다")
+                            .build());
+        }
+    }
+
+    /**
      * 제목 또는 내용에서 키워드 검색
      * @param keyword 검색할 키워드
      * @return 검색 결과 게시글 응답 DTO 리스트
