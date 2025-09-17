@@ -625,334 +625,80 @@ public class CourseRecommendationService {
         return prompt.toString();
     }
 
-    // GPT 응답 파싱 메서드 (단일일) - 자유로운 일정 구성 지원
-    private List<RecommendedPlaceDto> parseGptRecommendation(
-            String gptResponse,
-            List<RecommendedPlaceDto> foodList,
-            List<RecommendedPlaceDto> tourList,
-            List<RecommendedPlaceDto> stayList) {
-
-        List<RecommendedPlaceDto> selectedPlaces = new ArrayList<>();
-
-        try {
-            System.out.println("=== GPT Response Parsing (Flexible) ===");
-            System.out.println("GPT Response: " + gptResponse);
-
-            // GPT 응답을 | 구분자로 분리
-            String[] recommendedPlaceNames = gptResponse.split("\\|");
-
-            System.out.println("Split places count: " + recommendedPlaceNames.length);
-
-            // 각 장소명에 대해 전체 카테고리에서 매칭 시도
-            for (String placeName : recommendedPlaceNames) {
-                placeName = placeName.trim();
-
-                // 태그 제거 ([음식점], [관광지], [숙소] 등)
-                placeName = placeName.replaceAll("\\[.*?\\]", "").trim();
-
-                if (placeName.isEmpty()) continue;
-
-                System.out.println("Trying to match: " + placeName);
-
-                RecommendedPlaceDto matchedPlace = null;
-
-                // 1. 음식점에서 찾기
-                matchedPlace = findExactMatch(placeName, foodList);
-                if (matchedPlace != null) {
-                    System.out.println("Found in food: " + matchedPlace.getName());
-                    selectedPlaces.add(matchedPlace);
-                    continue;
-                }
-
-                // 2. 관광지에서 찾기
-                matchedPlace = findExactMatch(placeName, tourList);
-                if (matchedPlace != null) {
-                    System.out.println("Found in tour: " + matchedPlace.getName());
-                    selectedPlaces.add(matchedPlace);
-                    continue;
-                }
-
-                // 3. 숙소에서 찾기
-                matchedPlace = findExactMatch(placeName, stayList);
-                if (matchedPlace != null) {
-                    System.out.println("Found in stay: " + matchedPlace.getName());
-                    selectedPlaces.add(matchedPlace);
-                    continue;
-                }
-
-                System.out.println("No exact match found for: " + placeName);
-            }
-
-            System.out.println("Final selected places count: " + selectedPlaces.size());
-
-        } catch (Exception e) {
-            System.out.println("GPT parsing error: " + e.getMessage());
-
-            // 파싱 실패시 기본 추천 - 시간대에 따라 적절한 장소 선택
-            LocalTime currentTime = LocalTime.now();
-
-            if (currentTime.isBefore(LocalTime.of(15, 0))) {
-                // 오후 3시 이전이면 점심 추천
-                RecommendedPlaceDto food = foodList.stream().findFirst().orElse(null);
-                if (food != null) selectedPlaces.add(food);
-            }
-
-            if (currentTime.isBefore(LocalTime.of(18, 0))) {
-                // 오후 6시 이전이면 관광지 추천
-                RecommendedPlaceDto tour = tourList.stream().findFirst().orElse(null);
-                if (tour != null) selectedPlaces.add(tour);
-            }
-        }
-
-        return selectedPlaces;
-    }
-
-    // 정확한 매칭을 위한 헬퍼 메서드
-    private RecommendedPlaceDto findExactMatch(String targetName, List<RecommendedPlaceDto> places) {
-        // 1. 정확한 이름 매칭
-        for (RecommendedPlaceDto place : places) {
-            if (place.getName().equals(targetName)) {
-                return place;
-            }
-        }
-
-        // 2. 부분 매칭 (양방향)
-        for (RecommendedPlaceDto place : places) {
-            if (place.getName().contains(targetName) || targetName.contains(place.getName())) {
-                return place;
-            }
-        }
-
-        // 3. 키워드 매칭
-        String[] keywords = targetName.split("[\\s\\-]+");
-        for (String keyword : keywords) {
-            keyword = keyword.trim();
-            if (keyword.length() > 1) {
-                for (RecommendedPlaceDto place : places) {
-                    if (place.getName().contains(keyword)) {
-                        return place;
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-
-    public List<RecommendedPlaceDto> getPlaces(GolfCourse golfCourse, int contentTypeId) {
-        // 골프장 좌표 정보 추출
-        double mapX = golfCourse.getLongitude(); // 경도 (X 좌표)
-        double mapY = golfCourse.getLatitude();  // 위도 (Y 좌표)
-
-        System.out.println("=== getPlaces Debug (Coordinate-based) ===");
-        System.out.println("Golf Course: " + golfCourse.getName());
-        System.out.println("Address: " + golfCourse.getAddress());
-        System.out.println("Coordinates: longitude=" + mapX + ", latitude=" + mapY);
-        System.out.println("ContentTypeId: " + contentTypeId);
-
-        // 좌표 기반으로 주변 관광지 검색 (최대 20km 반경)
-        List<TourItem> tourItems = tourApiClient.fetchNearbyItems(mapX, mapY, List.of(contentTypeId));
-
-        System.out.println("Retrieved nearby items count: " + tourItems.size());
-        if (!tourItems.isEmpty()) {
-            System.out.println("First 3 items:");
-            tourItems.stream().limit(3).forEach(item ->
-                System.out.println("- " + item.getTitle() + " (거리: " + item.getDist() + "m)"));
-        }
-        System.out.println("==========================================");
-
-        return tourItems.stream()
-                .map(this::toRecommendedPlace)
-                .toList();
-    }
-
-    private List<RecommendedPlaceDto> getFilteredStays(GolfCourse golfCourse, String courseType) {
-        // 골프장 좌표 정보 추출
-        double mapX = golfCourse.getLongitude(); // 경도 (X 좌표)
-        double mapY = golfCourse.getLatitude();  // 위도 (Y 좌표)
-
-        System.out.println("=== getFilteredStays Debug (Coordinate-based) ===");
-        System.out.println("Golf Course: " + golfCourse.getName());
-        System.out.println("Address: " + golfCourse.getAddress());
-        System.out.println("Coordinates: longitude=" + mapX + ", latitude=" + mapY);
-        System.out.println("Course Type: " + courseType);
-
-        // 좌표 기반으로 주변 숙소 검색 (최대 20km 반경)
-        List<TourItem> tourItems = tourApiClient.fetchNearbyItems(mapX, mapY, List.of(32));
-
-        System.out.println("Retrieved nearby stay items count: " + tourItems.size());
-
-        // 코스 타입에 따른 필터링
-        List<String> cat3Codes = CourseTypeMapper.getCat3Codes(courseType);
-        List<TourItem> filteredItems = tourItems.stream()
-                .filter(item -> cat3Codes.contains(item.getCat3()))
-                .toList();
-
-        System.out.println("Filtered stay items count: " + filteredItems.size());
-        if (!filteredItems.isEmpty()) {
-            System.out.println("First 3 filtered stays:");
-            filteredItems.stream().limit(3).forEach(item ->
-                System.out.println("- " + item.getTitle() + " (거리: " + item.getDist() + "m)"));
-        }
-        System.out.println("===============================================");
-
-        return filteredItems.stream()
-                .map(this::toRecommendedPlace)
-                .toList();
-    }
-
-    private List<String> getRecommendationOrder(LocalTime endTime) {
-        if (endTime.isBefore(LocalTime.of(13, 0))) return List.of("food", "tour", "stay");
-        if (endTime.isBefore(LocalTime.of(17, 0))) return List.of("tour", "food", "stay");
-        return List.of("food", "stay");
-    }
-
-    private RecommendedPlaceDto toRecommendedPlace(TourItem item) {
-        return RecommendedPlaceDto.builder()
-                .type(resolveType(item.getContenttypeid()))
-                .name(item.getTitle())
-                .address(item.getAddr1())
-                .imageUrl(item.getFirstimage())
-                .distanceKm(0.0)
-                .mapx(item.getMapx())
-                .mapy(item.getMapy())
-                // 시간 정보는 응답 생성 시점에서 계산되므로 여기서는 null로 설정
-                .startTime(null)
-                .endTime(null)
-                .duration(null)
-                .timeLabel(null)
-                .build();
-    }
-
-    private String resolveType(int contentTypeId) {
-        return switch (contentTypeId) {
-            case 12 -> "tour";
-            case 32 -> "stay";
-            case 39 -> "food";
-            default -> "unknown";
-        };
-    }
-
-    public static String resolveLabel(String courseType) {
-        return switch (courseType) {
-            case "luxury" -> "럭셔리 / 프리미엄";
-            case "value" -> "가성비 / 실속";
-            case "resort" -> "휴양 / 리조트";
-            case "theme" -> "독특한 경험 / 테마";
-            default -> "기타";
-        };
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<?> handleAccessDenied(AccessDeniedException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(CommonResponse.builder()
-                        .statusCode(403)
-                        .msg(e.getMessage())
-                        .build());
-    }
-
-    private void createSchedulesForRecommendation(
-            User user,
-            GolfCourse golfCourse,
-            String date,  // 예시: "2025-08-15"
-            CourseRecommendation courseRecommendation
-    ) {
-        LocalTime teeOffTime = courseRecommendation.getTeeOffTime();
-        LocalTime golfEndTime = courseRecommendation.getEndTime();
-
-        // (1) 골프장 일정 - 실제 시간대로 설정
-        ScheduleRequestDto golfSchedule = new ScheduleRequestDto();
-        golfSchedule.setTitle("[라운딩] " + golfCourse.getName());
-        golfSchedule.setAllDay(false); // 시간 지정으로 변경
-        golfSchedule.setCategory("라운딩");
-        golfSchedule.setLocation(golfCourse.getAddress());
-        golfSchedule.setColor(ScheduleColor.GREEN);
-        String golfStartDateTime = date + "T" + teeOffTime.toString() + ":00";
-        String golfEndDateTime = date + "T" + golfEndTime.toString() + ":00";
-        scheduleService.createSchedule(user, golfSchedule, golfStartDateTime, golfEndDateTime);
-
-        // (2) 추천 장소(음식점, 관광지, 숙소) 일정 - 시간 간격을 두고 생성
-        List<RecommendedPlace> recommendedPlaces = courseRecommendation.getRecommendedPlaces();
-
-        LocalTime currentTime = golfEndTime.plusMinutes(30); // 골프 종료 30분 후부터 시작
-
-        for (RecommendedPlace place : recommendedPlaces) {
-            ScheduleRequestDto placeSchedule = new ScheduleRequestDto();
-            placeSchedule.setTitle("[추천] " + place.getName());
-            placeSchedule.setAllDay(false); // 시간 지정으로 변경
-            placeSchedule.setCategory(place.getType());
-            placeSchedule.setLocation(place.getAddress());
-            placeSchedule.setColor(ScheduleColor.BLUE);
-
-            // 장소 유형에 따라 적절한 시간 배정
-            LocalTime endTime;
-            switch (place.getType()) {
-                case "food" -> {
-                    endTime = currentTime.plusHours(1).plusMinutes(30); // 음식점 1시간 30분
-                }
-                case "tour" -> {
-                    endTime = currentTime.plusHours(2); // 관광지 2시간
-                }
-                case "stay" -> {
-                    endTime = LocalTime.of(23, 59); // 숙소는 저녁까지
-                }
-                default -> {
-                    endTime = currentTime.plusHours(1); // 기본 1시간
-                }
-            }
-
-            String placeStartDateTime = date + "T" + currentTime.toString() + ":00";
-            String placeEndDateTime = date + "T" + endTime.toString() + ":00";
-
-            scheduleService.createSchedule(user, placeSchedule, placeStartDateTime, placeEndDateTime);
-
-            // 다음 장소를 위한 시간 업데이트 (이동 시간 30분 추가)
-            if (!place.getType().equals("stay")) {
-                currentTime = endTime.plusMinutes(30);
-            }
-        }
-    }
-
-    // 다일차 응답에서 특정 일차 정보 추출
+    // 다일차 응답에서 특정 일차 정보 추출 (괄호 포함 패턴 매칭 수정)
     private String extractDayRecommendation(String gptResponse, String dayPattern) {
         try {
-            int startIndex = gptResponse.indexOf(dayPattern);
-            if (startIndex == -1) return null;
+            // GPT 응답 형식: [1일차] 음식점|관광지|숙소명 형태로 찾기
+            String bracketPattern = "[" + dayPattern + "]";
+            int startIndex = gptResponse.indexOf(bracketPattern);
+
+            System.out.println("=== extractDayRecommendation Debug ===");
+            System.out.println("Looking for pattern: " + bracketPattern);
+            System.out.println("Pattern found at index: " + startIndex);
+
+            if (startIndex == -1) {
+                System.out.println("Pattern not found, trying alternative patterns...");
+                // 대안 패턴들 시도
+                String[] alternativePatterns = {
+                    dayPattern + ")",  // 1일차)
+                    dayPattern + ":",  // 1일차:
+                    dayPattern + " ",  // 1일차
+                    dayPattern        // 1일차
+                };
+
+                for (String altPattern : alternativePatterns) {
+                    startIndex = gptResponse.indexOf(altPattern);
+                    if (startIndex != -1) {
+                        System.out.println("Found alternative pattern: " + altPattern + " at index: " + startIndex);
+                        break;
+                    }
+                }
+
+                if (startIndex == -1) {
+                    System.out.println("No pattern found for: " + dayPattern);
+                    return null;
+                }
+            }
 
             // "]" 다음부터 실제 추천 내용 찾기
             int bracketEnd = gptResponse.indexOf("]", startIndex);
-            if (bracketEnd == -1) return null;
+            if (bracketEnd == -1) {
+                // "]"가 없으면 패턴 다음부터 찾기
+                bracketEnd = startIndex + bracketPattern.length() - 1;
+            }
 
-            // "]" 이후부터 다음 줄바꿈이나 특정 패턴까지만 추출
+            // "]" 이후부터 다음 줄바꿈이나 다음 일차 패턴까지만 추출
             String afterBracket = gptResponse.substring(bracketEnd + 1);
 
-            // 첫 번째 줄만 추출 (상세 설명 제외)
-            String[] lines = afterBracket.split("\\n");
-            String firstLine = lines[0].trim();
+            // 다음 일차 패턴이 나오기 전까지만 추출
+            String nextDayPattern = "[" + (Integer.parseInt(dayPattern.replace("일차", "")) + 1) + "일차]";
+            int nextDayIndex = afterBracket.indexOf(nextDayPattern);
 
-            // "### 상세 설명" 같은 패턴이 있으면 그 전까지만 추출
-            int detailIndex = firstLine.indexOf("###");
+            String extractedContent;
+            if (nextDayIndex != -1) {
+                extractedContent = afterBracket.substring(0, nextDayIndex).trim();
+            } else {
+                // 다음 일차가 없으면 첫 번째 줄만 추출
+                String[] lines = afterBracket.split("\\n");
+                extractedContent = lines[0].trim();
+            }
+
+            // "- **음식점:**" 같은 상세 설명이 있으면 그 전까지만 추출
+            int detailIndex = extractedContent.indexOf("- **");
             if (detailIndex != -1) {
-                firstLine = firstLine.substring(0, detailIndex).trim();
+                extractedContent = extractedContent.substring(0, detailIndex).trim();
             }
 
-            // "**1일차:**" 같은 패턴이 있으면 그 전까지만 추출
-            int dayDetailIndex = firstLine.indexOf("**" + dayPattern.replace("일차", "") + "일차:**");
-            if (dayDetailIndex != -1) {
-                firstLine = firstLine.substring(0, dayDetailIndex).trim();
-            }
-
-            System.out.println("=== extractDayRecommendation Debug ===");
             System.out.println("dayPattern: " + dayPattern);
+            System.out.println("bracketPattern: " + bracketPattern);
             System.out.println("Original content length: " + afterBracket.length());
-            System.out.println("Extracted first line: " + firstLine);
+            System.out.println("Extracted content: '" + extractedContent + "'");
             System.out.println("=====================================");
 
-            return firstLine;
+            return extractedContent.isEmpty() ? null : extractedContent;
         } catch (Exception e) {
             System.out.println("extractDayRecommendation error: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
@@ -1064,7 +810,7 @@ public class CourseRecommendationService {
         if (randomTour != null) diversifiedPlaces.add(randomTour);
 
         // 숙소 추천 규칙: 마지막 날이 아닌 경우에만 숙소 추가
-        boolean isLastDay = (dayNumber != null && travelDays != null && dayNumber.equals(travelDays));
+        boolean isLastDay = (travelDays != null && dayNumber != null && dayNumber.equals(travelDays));
 
         if (!isLastDay && randomStay != null) {
             diversifiedPlaces.add(randomStay);
@@ -1076,5 +822,301 @@ public class CourseRecommendationService {
         }
 
         return diversifiedPlaces;
+    }
+
+    // GPT 응답 파싱 메서드 (단일일) - 자유로운 일정 구성 지원
+    private List<RecommendedPlaceDto> parseGptRecommendation(
+            String gptResponse,
+            List<RecommendedPlaceDto> foodList,
+            List<RecommendedPlaceDto> tourList,
+            List<RecommendedPlaceDto> stayList) {
+
+        List<RecommendedPlaceDto> selectedPlaces = new ArrayList<>();
+
+        try {
+            System.out.println("=== GPT Response Parsing (Flexible) ===");
+            System.out.println("GPT Response: " + gptResponse);
+
+            // GPT 응답을 | 구분자로 분리
+            String[] recommendedPlaceNames = gptResponse.split("\\|");
+
+            System.out.println("Split places count: " + recommendedPlaceNames.length);
+
+            // 각 장소명에 대해 전체 카테고리에서 매칭 시도
+            for (String placeName : recommendedPlaceNames) {
+                placeName = placeName.trim();
+
+                // 태그 제거 ([음식점], [관광지], [숙소] 등)
+                placeName = placeName.replaceAll("\\[.*?]", "").trim();
+
+                if (placeName.isEmpty()) continue;
+
+                System.out.println("Trying to match: " + placeName);
+
+                RecommendedPlaceDto matchedPlace;
+
+                // 1. 음식점에서 찾기
+                matchedPlace = findExactMatch(placeName, foodList);
+                if (matchedPlace != null) {
+                    System.out.println("Found in food: " + matchedPlace.getName());
+                    selectedPlaces.add(matchedPlace);
+                    continue;
+                }
+
+                // 2. 관광지에서 찾기
+                matchedPlace = findExactMatch(placeName, tourList);
+                if (matchedPlace != null) {
+                    System.out.println("Found in tour: " + matchedPlace.getName());
+                    selectedPlaces.add(matchedPlace);
+                    continue;
+                }
+
+                // 3. 숙소에서 찾기
+                matchedPlace = findExactMatch(placeName, stayList);
+                if (matchedPlace != null) {
+                    System.out.println("Found in stay: " + matchedPlace.getName());
+                    selectedPlaces.add(matchedPlace);
+                }
+
+                System.out.println("No exact match found for: " + placeName);
+            }
+
+            System.out.println("Final selected places count: " + selectedPlaces.size());
+
+        } catch (Exception e) {
+            System.out.println("GPT parsing error: " + e.getMessage());
+
+            // 파싱 실패시 기본 추천 - 시간대에 따라 적절한 장소 선택
+            LocalTime currentTime = LocalTime.now();
+
+            if (currentTime.isBefore(LocalTime.of(15, 0))) {
+                // 오후 3시 이전이면 점심 추천
+                RecommendedPlaceDto food = foodList.stream().findFirst().orElse(null);
+                if (food != null) selectedPlaces.add(food);
+            }
+
+            if (currentTime.isBefore(LocalTime.of(18, 0))) {
+                // 오후 6시 이전이면 관광지 추천
+                RecommendedPlaceDto tour = tourList.stream().findFirst().orElse(null);
+                if (tour != null) selectedPlaces.add(tour);
+            }
+        }
+
+        return selectedPlaces;
+    }
+
+    // 정확한 매칭을 위한 헬퍼 메서드
+    private RecommendedPlaceDto findExactMatch(String targetName, List<RecommendedPlaceDto> places) {
+        // 1. 정확한 이름 매칭
+        for (RecommendedPlaceDto place : places) {
+            if (place.getName().equals(targetName)) {
+                return place;
+            }
+        }
+
+        // 2. 부분 매칭 (양방향)
+        for (RecommendedPlaceDto place : places) {
+            if (place.getName().contains(targetName) || targetName.contains(place.getName())) {
+                return place;
+            }
+        }
+
+        // 3. 키워드 매칭
+        String[] keywords = targetName.split("[\\s\\-]+");
+        for (String keyword : keywords) {
+            keyword = keyword.trim();
+            if (keyword.length() > 1) {
+                for (RecommendedPlaceDto place : places) {
+                    if (place.getName().contains(keyword)) {
+                        return place;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // 관광 API 호출 메서드
+    public List<RecommendedPlaceDto> getPlaces(GolfCourse golfCourse, int contentTypeId) {
+        // 골프장 좌표 정보 추출
+        double mapX = golfCourse.getLongitude(); // 경도 (X 좌표)
+        double mapY = golfCourse.getLatitude();  // 위도 (Y 좌표)
+
+        System.out.println("=== getPlaces Debug (Coordinate-based) ===");
+        System.out.println("Golf Course: " + golfCourse.getName());
+        System.out.println("Address: " + golfCourse.getAddress());
+        System.out.println("Coordinates: longitude=" + mapX + ", latitude=" + mapY);
+        System.out.println("ContentTypeId: " + contentTypeId);
+
+        // 좌표 기반으로 주변 관광지 검색 (최대 20km 반경)
+        List<TourItem> tourItems = tourApiClient.fetchNearbyItems(mapX, mapY, List.of(contentTypeId));
+
+        System.out.println("Retrieved nearby items count: " + tourItems.size());
+        if (!tourItems.isEmpty()) {
+            System.out.println("First 3 items:");
+            tourItems.stream().limit(3).forEach(item ->
+                System.out.println("- " + item.getTitle() + " (거리: " + item.getDist() + "m)"));
+        }
+        System.out.println("==========================================");
+
+        return tourItems.stream()
+                .map(this::toRecommendedPlace)
+                .toList();
+    }
+
+    // 숙소 필터링 메서드
+    private List<RecommendedPlaceDto> getFilteredStays(GolfCourse golfCourse, String courseType) {
+        // 골프장 좌표 정보 추출
+        double mapX = golfCourse.getLongitude(); // 경도 (X 좌표)
+        double mapY = golfCourse.getLatitude();  // 위도 (Y 좌표)
+
+        System.out.println("=== getFilteredStays Debug (Coordinate-based) ===");
+        System.out.println("Golf Course: " + golfCourse.getName());
+        System.out.println("Address: " + golfCourse.getAddress());
+        System.out.println("Coordinates: longitude=" + mapX + ", latitude=" + mapY);
+        System.out.println("Course Type: " + courseType);
+
+        // 좌표 기반으로 주변 숙소 검색 (최대 20km 반경)
+        List<TourItem> tourItems = tourApiClient.fetchNearbyItems(mapX, mapY, List.of(32));
+
+        System.out.println("Retrieved nearby stay items count: " + tourItems.size());
+
+        // 코스 타입에 따른 필터링
+        List<String> cat3Codes = CourseTypeMapper.getCat3Codes(courseType);
+        List<TourItem> filteredItems = tourItems.stream()
+                .filter(item -> cat3Codes.contains(item.getCat3()))
+                .toList();
+
+        System.out.println("Filtered stay items count: " + filteredItems.size());
+        if (!filteredItems.isEmpty()) {
+            System.out.println("First 3 filtered stays:");
+            filteredItems.stream().limit(3).forEach(item ->
+                System.out.println("- " + item.getTitle() + " (거리: " + item.getDist() + "m)"));
+        }
+        System.out.println("===============================================");
+
+        return filteredItems.stream()
+                .map(this::toRecommendedPlace)
+                .toList();
+    }
+
+    // 추천 순서 결정 메서드
+    private List<String> getRecommendationOrder(LocalTime endTime) {
+        if (endTime.isBefore(LocalTime.of(13, 0))) return List.of("food", "tour", "stay");
+        if (endTime.isBefore(LocalTime.of(17, 0))) return List.of("tour", "food", "stay");
+        return List.of("food", "stay");
+    }
+
+    // TourItem을 RecommendedPlaceDto로 변환하는 메서드
+    private RecommendedPlaceDto toRecommendedPlace(TourItem item) {
+        return RecommendedPlaceDto.builder()
+                .type(resolveType(item.getContenttypeid()))
+                .name(item.getTitle())
+                .address(item.getAddr1())
+                .imageUrl(item.getFirstimage())
+                .distanceKm(0.0)
+                .mapx(item.getMapx())
+                .mapy(item.getMapy())
+                // 시간 정보는 응답 생성 시점에서 계산되므로 여기서는 null로 설정
+                .startTime(null)
+                .endTime(null)
+                .duration(null)
+                .timeLabel(null)
+                .build();
+    }
+
+    // contentTypeId를 type으로 변환하는 메서드
+    private String resolveType(int contentTypeId) {
+        return switch (contentTypeId) {
+            case 12 -> "tour";
+            case 32 -> "stay";
+            case 39 -> "food";
+            default -> "unknown";
+        };
+    }
+
+    // 코스 타입 라벨 해결 메서드
+    public static String resolveLabel(String courseType) {
+        return switch (courseType) {
+            case "luxury" -> "럭셔리 / 프리미엄";
+            case "value" -> "가성비 / 실속";
+            case "resort" -> "휴양 / 리조트";
+            case "theme" -> "독특한 경험 / 테마";
+            default -> "기타";
+        };
+    }
+
+    // 예외 처리 메서드
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<?> handleAccessDenied(AccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(CommonResponse.builder()
+                        .statusCode(403)
+                        .msg(e.getMessage())
+                        .build());
+    }
+
+    // 스케줄 생성 메서드
+    private void createSchedulesForRecommendation(
+            User user,
+            GolfCourse golfCourse,
+            String date,  // 예시: "2025-08-15"
+            CourseRecommendation courseRecommendation
+    ) {
+        LocalTime teeOffTime = courseRecommendation.getTeeOffTime();
+        LocalTime golfEndTime = courseRecommendation.getEndTime();
+
+        // (1) 골프장 일정 - 실제 시간대로 설정
+        ScheduleRequestDto golfSchedule = new ScheduleRequestDto();
+        golfSchedule.setTitle("[라운딩] " + golfCourse.getName());
+        golfSchedule.setAllDay(false); // 시간 지정으로 변경
+        golfSchedule.setCategory("라운딩");
+        golfSchedule.setLocation(golfCourse.getAddress());
+        golfSchedule.setColor(ScheduleColor.GREEN);
+        String golfStartDateTime = date + "T" + teeOffTime.toString() + ":00";
+        String golfEndDateTime = date + "T" + golfEndTime.toString() + ":00";
+        scheduleService.createSchedule(user, golfSchedule, golfStartDateTime, golfEndDateTime);
+
+        // (2) 추천 장소(음식점, 관광지, 숙소) 일정 - 시간 간격을 두고 생성
+        List<RecommendedPlace> recommendedPlaces = courseRecommendation.getRecommendedPlaces();
+
+        LocalTime currentTime = golfEndTime.plusMinutes(30); // 골프 종료 30분 후부터 시작
+
+        for (RecommendedPlace place : recommendedPlaces) {
+            ScheduleRequestDto placeSchedule = new ScheduleRequestDto();
+            placeSchedule.setTitle("[추천] " + place.getName());
+            placeSchedule.setAllDay(false); // 시간 지정으로 변경
+            placeSchedule.setCategory(place.getType());
+            placeSchedule.setLocation(place.getAddress());
+            placeSchedule.setColor(ScheduleColor.BLUE);
+
+            // 장소 유형에 따라 적절한 시간 배정
+            LocalTime endTime;
+            switch (place.getType()) {
+                case "food" -> {
+                    endTime = currentTime.plusHours(1).plusMinutes(30); // 음식점 1시간 30분
+                }
+                case "tour" -> {
+                    endTime = currentTime.plusHours(2); // 관광지 2시간
+                }
+                case "stay" -> {
+                    endTime = LocalTime.of(23, 59); // 숙소는 저녁까지
+                }
+                default -> {
+                    endTime = currentTime.plusHours(1); // 기본 1시간
+                }
+            }
+
+            String placeStartDateTime = date + "T" + currentTime.toString() + ":00";
+            String placeEndDateTime = date + "T" + endTime.toString() + ":00";
+
+            scheduleService.createSchedule(user, placeSchedule, placeStartDateTime, placeEndDateTime);
+
+            // 다음 장소를 위한 시간 업데이트 (이동 시간 30분 추가)
+            if (!place.getType().equals("stay")) {
+                currentTime = endTime.plusMinutes(30);
+            }
+        }
     }
 }
