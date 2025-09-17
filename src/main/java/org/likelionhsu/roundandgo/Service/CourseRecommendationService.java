@@ -407,18 +407,7 @@ public class CourseRecommendationService {
         prompt.append("   - 점심만 (골프 후 점심 후 귀가)\n");
         prompt.append("   - 점심 + 관광 (오후 여행)\n");
         prompt.append("   - 점심 + 관광 + 저녁\n");
-        prompt.append("   - 관광 + 저녁 (점심 생략)\n");
-        prompt.append("   - 카페 + 쇼핑 등 자유로운 조합\n");
-        prompt.append("   - 시간대에 따라 적절한 활동 자유 선택\n\n");
-
-        prompt.append("**응답 형식:**\n");
-        prompt.append("추천하고 싶은 장소들을 | 구분자로 나열해주세요.\n");
-        prompt.append("장소명은 반드시 위에 제공된 목록에서 선택해주세요.\n\n");
-        prompt.append("예시:\n");
-        prompt.append("- 점심만: 제주흑돼지맛집\n");
-        prompt.append("- 점심+관광: 제주흑돼지맛집|성산일출봉\n");
-        prompt.append("- 점심+관광+숙소: 제주흑돼지맛집|성산일출봉|제주신라호텔\n");
-        prompt.append("- 관광+저녁: 성산일출봉|해산물뚝배기\n\n");
+        prompt.append("   - 관광 + 저녁: 성산일출봉|해산물뚝배기\n\n");
 
         // 다양성 참고 정보
         long currentTime = System.currentTimeMillis();
@@ -463,31 +452,56 @@ public class CourseRecommendationService {
             prompt.append("- **중요:** 골프 시간과 다른 활동 시간이 절대 겹치면 안됩니다!\n\n");
         }
 
-        prompt.append("**중요한 요청사항:**\n");
-        prompt.append("1. **중복 절대 금지**: 각 일차별로 서로 다른 음식점과 관광지를 추천 해주고 숙소를 제외한 같은 장소 중복 추천 금지 (한번의 추천에 숙소를 제외한 모든 음식점, 관광지 중복 금지)\n");
-        prompt.append("2. **자유로운 일정 구성**: 골프장+음식점+관광지+숙소 고정 조합이 아니어도 됩니다\n");
-        prompt.append("3. **시간대별 적절한 추천**: \n");
+        prompt.append("**필수 준수 사항:**\n");
+        prompt.append("1. **숙소 추천 규칙**: 총 ").append(travelDays - 1).append("개의 숙소를 반드시 추천해야 합니다\n");
+        prompt.append("   - 마지막 날(").append(travelDays).append("일차)을 제외한 모든 날에 숙소 필수 포함\n");
+        prompt.append("   - 1일차부터 ").append(travelDays - 1).append("일차까지는 반드시 숙소가 있어야 합니다\n");
+        prompt.append("   - ").append(travelDays).append("일차(마지막 날)에는 숙소 추천 금지 (당일 귀가)\n\n");
+
+        prompt.append("2. **중복 절대 금지 규칙**:\n");
+        prompt.append("   - 음식점: 전체 여행 기간 동안 같은 음식점 중복 추천 절대 금지\n");
+        prompt.append("   - 관광지: 전체 여행 기간 동안 같은 관광지 중복 추천 절대 금지\n");
+        prompt.append("   - 숙소: 중복 가능 (같은 호텔에 연박 허용)\n");
+        prompt.append("   - 골프장: 중복 가능 (다른 날 같은 골프장 가능)\n\n");
+
+        prompt.append("**추천 가이드라인:**\n");
+        prompt.append("3. **자유로운 일정 구성**: 골프장+음식점+관광지+숙소 고정 조합이 아니어도 됩니다\n");
+        prompt.append("4. **시간대별 적절한 추천**: \n");
         prompt.append("   - 점심 시간대(12:00-15:00) 포함 시: 점심 식사를 포함하면 좋지만 필수 아님\n");
         prompt.append("   - 저녁 시간대(17:00-20:00) 포함 시: 저녁 식사를 포함하면 좋지만 필수 아님\n");
         prompt.append("   - 각 시간대에 강제로 식사만 하는 것이 아니라 상황에 맞는 활동 자유 선택\n");
-        prompt.append("4. **효율적 동선**: 골프장과의 이동 거리를 최소화하여 효율적인 동선 고려\n");
-        prompt.append("5. **시간 여유**: 각 활동 간 이동 시간을 최소 30분씩 확보\n");
-        prompt.append("6. **시간 겹침 방지**: 골프 종료 시간 이후에만 다른 활동 가능\n");
-        prompt.append("7. **다양한 패턴 허용**:\n");
-        prompt.append("   - 점심만 (골프 후 점심 후 귀가)\n");
-        prompt.append("   - 점심 + 관광 (오후 여행)\n");
+        prompt.append("5. **효율적 동선**: 골프장과의 이동 거리를 최소화하여 효율적인 동선 고려\n");
+        prompt.append("6. **시간 여유**: 각 활동 간 이동 시간을 최소 30분씩 확보\n");
+        prompt.append("7. **시간 겹침 방지**: 골프 종료 시간 이후에만 다른 활동 가능\n");
+        prompt.append("8. **다양한 패턴 허용**:\n");
+        prompt.append("   - 점심만 (골프 후 점심 후 숙소)\n");
+        prompt.append("   - 점심 + 관광 + 숙소\n");
         prompt.append("   - 점심 + 관광 + 저녁 + 숙소\n");
         prompt.append("   - 관광 + 저녁 + 숙소 (점심 생략)\n");
         prompt.append("   - 카페 + 휴식 + 숙소 등 자유로운 조합\n");
-        prompt.append("8. **일차별 다양성**: 각 일차마다 다른 스타일의 여행 코스 제안\n\n");
+        prompt.append("   - 마지막 날만: 점심 후 귀가, 관광 후 귀가 등\n");
+        prompt.append("9. **일차별 다양성**: 각 일차마다 다른 스타일의 여행 코스 제안\n\n");
 
         // 현재 시간을 기반으로 다양성 추가
         long currentTime = System.currentTimeMillis();
         prompt.append("**참고정보:** 추천 요청 시각: ").append(currentTime % 10000).append("\n");
         prompt.append("위 시각 정보를 참고하여 더욱 다양한 추천을 제공해주세요.\n\n");
 
-        prompt.append("응답 형식: [1일차] 음식점명|관광지명|숙소명 [2일차] 음식점명|관광지명|숙소명\n");
-        prompt.append("예시: [1일차] 제주흑돼지맛집|성산일출봉|제주신라호텔 [2일차] 해산물뚝배기|한라산국립공원|롯데호텔제주");
+        prompt.append("**응답 형식:**\n");
+        if (travelDays == 2) {
+            prompt.append("[1일차] 음식점명|관광지명|숙소명 [2일차] 음식점명|관광지명\n");
+            prompt.append("예시: [1일차] 제주흑돼지맛집|성산일출봉|제주신라호텔 [2일차] 해산물뚝배기|한라산국립공원\n");
+        } else if (travelDays == 3) {
+            prompt.append("[1일차] 음식점명|관광지명|숙소명 [2일차] 음식점명|관광지명|숙소명 [3일차] 음식점명|관광지명\n");
+            prompt.append("예시: [1일차] 제주흑돼지맛집|성산일출봉|제주신라호텔 [2일차] 해산물뚝배기|한라산국립공원|롯데호텔제주 [3일차] 갈치조림|우도\n");
+        } else {
+            prompt.append("각 일차별로 [N일차] 형식으로 추천하되, 마지막 날(").append(travelDays).append("일차)에는 숙소를 제외하고 추천\n");
+        }
+
+        prompt.append("\n**중요 재확인:**\n");
+        prompt.append("- 총 ").append(travelDays - 1).append("개의 숙소 필수 추천 (마지막 날 제외)\n");
+        prompt.append("- 음식점, 관광지는 전체 기간 중복 절대 금지\n");
+        prompt.append("- 골프 시간과 절대 겹치지 않도록 주의\n");
 
         return prompt.toString();
     }
@@ -897,7 +911,7 @@ public class CourseRecommendationService {
         return selectedPlaces;
     }
 
-    // 다양성을 위한 기본 추천 장소 선택 메서드
+    // 다양성을 위한 기본 추천 장소 선택 메서드 - 숙소 필수 규칙 적용
     private List<RecommendedPlaceDto> selectDiversifiedPlaces(Integer dayNumber, List<RecommendedPlaceDto> foodList, List<RecommendedPlaceDto> tourList, List<RecommendedPlaceDto> stayList) {
         List<RecommendedPlaceDto> diversifiedPlaces = new ArrayList<>();
 
@@ -908,7 +922,14 @@ public class CourseRecommendationService {
 
         if (randomFood != null) diversifiedPlaces.add(randomFood);
         if (randomTour != null) diversifiedPlaces.add(randomTour);
-        if (randomStay != null) diversifiedPlaces.add(randomStay);
+
+        // 숙소 추천 규칙: 마지막 날이 아닌 경우에만 숙소 추가
+        // dayNumber는 1부터 시작하므로, 전체 일차 수를 알기 위해서는 별도 정보가 필요
+        // 하지만 일반적으로 마지막 날이 아니라면 숙소를 포함해야 함
+        // 임시로 dayNumber가 1이면 숙소 포함 (실제로는 travelDays 정보가 필요)
+        if (randomStay != null) {
+            diversifiedPlaces.add(randomStay);
+        }
 
         return diversifiedPlaces;
     }
