@@ -444,19 +444,40 @@ public class CourseRecommendationService {
             LocalTime lunchTime = golfEndTime.plusMinutes(30);
             LocalTime tourTime = lunchTime.plusHours(1).plusMinutes(30);
 
+            boolean isLastDay = (i + 1 == travelDays);
+
             prompt.append("**").append(i + 1).append("일차 시간 계획:**\n");
             prompt.append("- 골프장 ID: ").append(golfCourseIds.get(i)).append("\n");
             prompt.append("- 골프 시간: ").append(teeOffTime).append(" ~ ").append(golfEndTime).append("\n");
             prompt.append("- 권장 점심 시간: ").append(lunchTime).append(" 이후 (골프 종료 후 이동시간 고려)\n");
             prompt.append("- 권장 관광 시간: ").append(tourTime).append(" 이후 (점심 후 이동시간 고려)\n");
+            if (isLastDay) {
+                prompt.append("- **숙소 규칙: ").append(i + 1).append("일차(마지막 날)는 숙소 추천 금지 - 당일 귀가**\n");
+            } else {
+                prompt.append("- **숙소 규칙: ").append(i + 1).append("일차는 숙소 반드시 포함 필요 - 숙박 예정**\n");
+            }
             prompt.append("- **중요:** 골프 시간과 다른 활동 시간이 절대 겹치면 안됩니다!\n\n");
         }
 
-        prompt.append("**필수 준수 사항:**\n");
-        prompt.append("1. **숙소 추천 규칙**: 총 ").append(travelDays - 1).append("개의 숙소를 반드시 추천해야 합니다\n");
-        prompt.append("   - 마지막 날(").append(travelDays).append("일차)을 제외한 모든 날에 숙소 필수 포함\n");
-        prompt.append("   - 1일차부터 ").append(travelDays - 1).append("일차까지는 반드시 숙소가 있어야 합니다\n");
-        prompt.append("   - ").append(travelDays).append("일차(마지막 날)에는 숙소 추천 금지 (당일 귀가)\n\n");
+        prompt.append("**필수 준수 사항 - 매우 중요:**\n");
+        prompt.append("1. **숙소 추천 규칙 (절대 준수)**: \n");
+        prompt.append("   - 총 여행 기간: ").append(travelDays).append("일\n");
+        prompt.append("   - 필요한 숙박: ").append(travelDays - 1).append("박 (마지막 날 제외)\n");
+        prompt.append("   - 숙소가 필요한 날: ");
+        for (int i = 1; i < travelDays; i++) {
+            prompt.append(i).append("일차");
+            if (i < travelDays - 1) prompt.append(", ");
+        }
+        prompt.append("\n");
+        prompt.append("   - 숙소가 불필요한 날: ").append(travelDays).append("일차 (마지막 날 - 당일 귀가)\n");
+        prompt.append("   - **예시 설명:**\n");
+        if (travelDays == 2) {
+            prompt.append("     * 1박2일 코스: 1일차에는 숙소 필수, 2일차에는 숙소 없음\n");
+        } else if (travelDays == 3) {
+            prompt.append("     * 2박3일 코스: 1일차와 2일차에는 숙소 필수, 3일차에는 숙소 없음\n");
+        } else {
+            prompt.append("     * ").append(travelDays - 1).append("박").append(travelDays).append("일 코스: 1일차부터 ").append(travelDays - 1).append("일차까지 숙소 필수, ").append(travelDays).append("일차에는 숙소 없음\n");
+        }
 
         prompt.append("2. **중복 절대 금지 규칙**:\n");
         prompt.append("   - 음식점: 전체 여행 기간 동안 같은 음식점 중복 추천 절대 금지\n");
@@ -468,18 +489,18 @@ public class CourseRecommendationService {
         prompt.append("3. **자유로운 일정 구성**: 골프장+음식점+관광지+숙소 고정 조합이 아니어도 됩니다\n");
         prompt.append("4. **시간대별 적절한 추천**: \n");
         prompt.append("   - 점심 시간대(12:00-15:00) 포함 시: 점심 식사를 포함하면 좋지만 필수 아님\n");
-        prompt.append("   - 저녁 시간대(17:00-20:00) 포함 시: 저녁 식사를 포함하면 좋지만 필수 아님\n");
+        prompt.append("   - 저녁 시간대(17:00-20:00) 포함 시: 저녁 식사를 포함하면 좋지만 필수는 아닙니다\n");
         prompt.append("   - 각 시간대에 강제로 식사만 하는 것이 아니라 상황에 맞는 활동 자유 선택\n");
         prompt.append("5. **효율적 동선**: 골프장과의 이동 거리를 최소화하여 효율적인 동선 고려\n");
         prompt.append("6. **시간 여유**: 각 활동 간 이동 시간을 최소 30분씩 확보\n");
         prompt.append("7. **시간 겹침 방지**: 골프 종료 시간 이후에만 다른 활동 가능\n");
         prompt.append("8. **다양한 패턴 허용**:\n");
-        prompt.append("   - 점심만 (골프 후 점심 후 숙소)\n");
-        prompt.append("   - 점심 + 관광 + 숙소\n");
-        prompt.append("   - 점심 + 관광 + 저녁 + 숙소\n");
-        prompt.append("   - 관광 + 저녁 + 숙소 (점심 생략)\n");
-        prompt.append("   - 카페 + 휴식 + 숙소 등 자유로운 조합\n");
-        prompt.append("   - 마지막 날만: 점심 후 귀가, 관광 후 귀가 등\n");
+        prompt.append("   - 점심만 (골프 후 점심 후 숙소) - 마지막 날 제외\n");
+        prompt.append("   - 점심 + 관광 + 숙소 - 마지막 날 제외\n");
+        prompt.append("   - 점심 + 관광 + 저녁 + 숙소 - 마지막 날 제외\n");
+        prompt.append("   - 관광 + 저녁 + 숙소 (점심 생략) - 마지막 날 제외\n");
+        prompt.append("   - 카페 + 휴식 + 숙소 등 자유로운 조합 - 마지막 날 제외\n");
+        prompt.append("   - 마지막 날만: 점심 후 귀가, 관광 후 귀가 등 (숙소 없음)\n");
         prompt.append("9. **일차별 다양성**: 각 일차마다 다른 스타일의 여행 코스 제안\n\n");
 
         // 현재 시간을 기반으로 다양성 추가
@@ -487,21 +508,24 @@ public class CourseRecommendationService {
         prompt.append("**참고정보:** 추천 요청 시각: ").append(currentTime % 10000).append("\n");
         prompt.append("위 시각 정보를 참고하여 더욱 다양한 추천을 제공해주세요.\n\n");
 
-        prompt.append("**응답 형식:**\n");
+        prompt.append("**응답 형식 (숙소 규칙에 따라 정확히):**\n");
         if (travelDays == 2) {
             prompt.append("[1일차] 음식점명|관광지명|숙소명 [2일차] 음식점명|관광지명\n");
             prompt.append("예시: [1일차] 제주흑돼지맛집|성산일출봉|제주신라호텔 [2일차] 해산물뚝배기|한라산국립공원\n");
+            prompt.append("❌ 잘못된 예시: [1일차] 제주흑돼지맛집|성산일출봉 [2일차] 해산물뚝배기|한라산국립공원|제주신라호텔\n");
         } else if (travelDays == 3) {
             prompt.append("[1일차] 음식점명|관광지명|숙소명 [2일차] 음식점명|관광지명|숙소명 [3일차] 음식점명|관광지명\n");
             prompt.append("예시: [1일차] 제주흑돼지맛집|성산일출봉|제주신라호텔 [2일차] 해산물뚝배기|한라산국립공원|롯데호텔제주 [3일차] 갈치조림|우도\n");
+            prompt.append("❌ 잘못된 예시: [1일차] 제주흑돼지맛집|성산일출봉 [2일차] 해산물뚝배기|한라산국립공원 [3일차] 갈치조림|우도|제주신라호텔\n");
         } else {
-            prompt.append("각 일차별로 [N일차] 형식으로 추천하되, 마지막 날(").append(travelDays).append("일차)에는 숙소를 제외하고 추천\n");
+            prompt.append("1일차부터 ").append(travelDays - 1).append("일차까지는 숙소 포함, ").append(travelDays).append("일차(마지막 날)는 숙소 제외\n");
         }
 
-        prompt.append("\n**중요 재확인:**\n");
-        prompt.append("- 총 ").append(travelDays - 1).append("개의 숙소 필수 추천 (마지막 날 제외)\n");
-        prompt.append("- 음식점, 관광지는 전체 기간 중복 절대 금지\n");
-        prompt.append("- 골프 시간과 절대 겹치지 않도록 주의\n");
+        prompt.append("\n**최종 확인 체크리스트:**\n");
+        prompt.append("✅ 1일차부터 ").append(travelDays - 1).append("일차까지 숙소 포함 확인\n");
+        prompt.append("✅ ").append(travelDays).append("일차(마지막 날)에는 숙소 없음 확인\n");
+        prompt.append("✅ 음식점, 관광지 중복 없음 확인\n");
+        prompt.append("✅ 골프 시간과 겹치지 않음 확인\n");
 
         return prompt.toString();
     }
@@ -851,7 +875,9 @@ public class CourseRecommendationService {
         // GPT 응답이 오류 메시지인 경우 다양성을 위한 랜덤 선택 사용
         if (gptResponse.contains("오류가 발생했습니다") || gptResponse.contains("생성할 수 없습니다")) {
             System.out.println("=== GPT Error - Using Diversified Default Recommendation ===");
-            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+            // travelDays 정보를 추출하기 위해 gptResponse 분석 시도
+            Integer estimatedTravelDays = extractTravelDaysFromResponse(gptResponse);
+            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList, estimatedTravelDays));
             return selectedPlaces;
         }
 
@@ -896,23 +922,42 @@ public class CourseRecommendationService {
                 // 최소한의 추천이 없다면 기본값으로 채우기
                 if (selectedPlaces.isEmpty()) {
                     System.out.println("=== No matches found - Using diversified selection ===");
-                    selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+                    Integer estimatedTravelDays = extractTravelDaysFromResponse(gptResponse);
+                    selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList, estimatedTravelDays));
                 }
             } else {
                 System.out.println("=== GPT Day Pattern Not Found - Using Diversified Selection ===");
-                selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+                Integer estimatedTravelDays = extractTravelDaysFromResponse(gptResponse);
+                selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList, estimatedTravelDays));
             }
 
         } catch (Exception e) {
             System.out.println("=== GPT Parsing Error - Using Diversified Default Recommendation ===");
-            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList));
+            Integer estimatedTravelDays = extractTravelDaysFromResponse(gptResponse);
+            selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList, estimatedTravelDays));
         }
 
         return selectedPlaces;
     }
 
-    // 다양성을 위한 기본 추천 장소 선택 메서드 - 숙소 필수 규칙 적용
-    private List<RecommendedPlaceDto> selectDiversifiedPlaces(Integer dayNumber, List<RecommendedPlaceDto> foodList, List<RecommendedPlaceDto> tourList, List<RecommendedPlaceDto> stayList) {
+    // GPT 응답에서 travelDays 추출 시도
+    private Integer extractTravelDaysFromResponse(String gptResponse) {
+        try {
+            // GPT 응답에서 "N일차" 패턴을 찾아서 최대값 추출
+            int maxDay = 1;
+            for (int i = 1; i <= 10; i++) { // 최대 10일까지 체크
+                if (gptResponse.contains(i + "일차")) {
+                    maxDay = Math.max(maxDay, i);
+                }
+            }
+            return maxDay;
+        } catch (Exception e) {
+            return 2; // 기본값으로 2일 반환
+        }
+    }
+
+    // 다양성을 위한 기본 추천 장소 선택 메서드 - 숙소 필수 규칙 적용 (travelDays 포함)
+    private List<RecommendedPlaceDto> selectDiversifiedPlaces(Integer dayNumber, List<RecommendedPlaceDto> foodList, List<RecommendedPlaceDto> tourList, List<RecommendedPlaceDto> stayList, Integer travelDays) {
         List<RecommendedPlaceDto> diversifiedPlaces = new ArrayList<>();
 
         // 각 카테고리에서 하나씩 랜덤 선택
@@ -924,11 +969,13 @@ public class CourseRecommendationService {
         if (randomTour != null) diversifiedPlaces.add(randomTour);
 
         // 숙소 추천 규칙: 마지막 날이 아닌 경우에만 숙소 추가
-        // dayNumber는 1부터 시작하므로, 전체 일차 수를 알기 위해서는 별도 정보가 필요
-        // 하지만 일반적으로 마지막 날이 아니라면 숙소를 포함해야 함
-        // 임시로 dayNumber가 1이면 숙소 포함 (실제로는 travelDays 정보가 필요)
-        if (randomStay != null) {
+        boolean isLastDay = (dayNumber != null && travelDays != null && dayNumber.equals(travelDays));
+
+        if (!isLastDay && randomStay != null) {
             diversifiedPlaces.add(randomStay);
+            System.out.println("=== Added stay for day " + dayNumber + " (not last day) ===");
+        } else if (isLastDay) {
+            System.out.println("=== Skipped stay for day " + dayNumber + " (last day) ===");
         }
 
         return diversifiedPlaces;
