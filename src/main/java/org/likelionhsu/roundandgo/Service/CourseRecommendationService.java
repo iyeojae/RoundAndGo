@@ -278,6 +278,27 @@ public class CourseRecommendationService {
         System.out.println(gptMultiDayRecommendation);
         System.out.println("====================");
 
+        // 전체 골프장의 숙소 데이터를 미리 수집 (숙소 부족 문제 해결)
+        List<RecommendedPlaceDto> allStayList = new ArrayList<>();
+        for (Long golfCourseId : golfCourseIds) {
+            GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                    .orElseThrow(() -> new RuntimeException("골프장 정보를 찾을 수 없습니다: " + golfCourseId));
+            List<RecommendedPlaceDto> stayList = getFilteredStays(golfCourse, courseType);
+            allStayList.addAll(stayList);
+        }
+
+        // 중복 제거 (같은 숙소가 여러 골프장 근처에 있을 수 있음)
+        allStayList = allStayList.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                    RecommendedPlaceDto::getName,
+                    place -> place,
+                    (existing, replacement) -> existing))
+                .values()
+                .stream()
+                .toList();
+
+        System.out.println("=== Total available stays for all golf courses: " + allStayList.size() + " ===");
+
         for (int i = 0; i < travelDays; i++) {
             Long golfCourseId = golfCourseIds.get(i);
             String teeOffTime = teeOffTimes.get(i);
@@ -290,16 +311,16 @@ public class CourseRecommendationService {
             LocalTime teeOff = LocalTime.parse(teeOffTime);
             LocalTime endTime = teeOff.plusHours(4).plusMinutes(30);
 
-            // 각 날짜별로 장소 데이터 가져오기
+            // 각 날짜별로 장소 데이터 가져오기 (숙소는 전체 리스트 사용)
             List<RecommendedPlaceDto> foodList = getPlaces(golfCourse, 39);
             List<RecommendedPlaceDto> tourList = getPlaces(golfCourse, 12);
-            List<RecommendedPlaceDto> stayList = getFilteredStays(golfCourse, courseType);
+            List<RecommendedPlaceDto> stayList = allStayList; // 전체 숙소 리스트 사용
 
             System.out.println("=== Day " + dayNumber + " Places Debug ===");
             System.out.println("Golf Course: " + golfCourse.getName());
             System.out.println("Food places count: " + foodList.size());
             System.out.println("Tour places count: " + tourList.size());
-            System.out.println("Stay places count: " + stayList.size());
+            System.out.println("Stay places count (using all): " + stayList.size());
 
             if (!foodList.isEmpty()) {
                 System.out.println("Sample food: " + foodList.get(0).getName());
@@ -437,8 +458,12 @@ public class CourseRecommendationService {
             prompt.append(userPreferences).append("\n\n");
         }
 
-        // 각 일차별 상세 시간 계획 추가
+        // 각 일차별 골프장 정보 및 상세 시간 계획 추가
         for (int i = 0; i < travelDays; i++) {
+            Long golfCourseId = golfCourseIds.get(i);
+            GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                    .orElseThrow(() -> new RuntimeException("골프장 정보를 찾을 수 없습니다: " + golfCourseId));
+
             LocalTime teeOffTime = LocalTime.parse(teeOffTimes.get(i));
             LocalTime golfEndTime = teeOffTime.plusHours(4).plusMinutes(30);
             LocalTime lunchTime = golfEndTime.plusMinutes(30);
@@ -446,8 +471,9 @@ public class CourseRecommendationService {
 
             boolean isLastDay = (i + 1 == travelDays);
 
-            prompt.append("**").append(i + 1).append("일차 시간 계획:**\n");
-            prompt.append("- 골프장 ID: ").append(golfCourseIds.get(i)).append("\n");
+            prompt.append("**").append(i + 1).append("일차 골프장 정보 및 시간 계획:**\n");
+            prompt.append("- 골프장명: ").append(golfCourse.getName()).append("\n");
+            prompt.append("- 골프장 주소: ").append(golfCourse.getAddress()).append("\n");
             prompt.append("- 골프 시간: ").append(teeOffTime).append(" ~ ").append(golfEndTime).append("\n");
             prompt.append("- 권장 점심 시간: ").append(lunchTime).append(" 이후 (골프 종료 후 이동시간 고려)\n");
             prompt.append("- 권장 관광 시간: ").append(tourTime).append(" 이후 (점심 후 이동시간 고려)\n");
@@ -459,8 +485,70 @@ public class CourseRecommendationService {
             prompt.append("- **중요:** 골프 시간과 다른 활동 시간이 절대 겹치면 안됩니다!\n\n");
         }
 
+        // 각 일차별 추천 가능한 장소들의 주소 정보 포함
+        prompt.append("**각 일차별 추천 가능한 장소들 (읍면동 기준 필터링 참고용):**\n\n");
+
+        for (int i = 0; i < travelDays; i++) {
+            Long golfCourseId = golfCourseIds.get(i);
+            GolfCourse golfCourse = golfCourseRepository.findById(golfCourseId)
+                    .orElseThrow(() -> new RuntimeException("골프장 정보를 찾을 수 없습니다: " + golfCourseId));
+
+            // 각 일차별 장소 데이터 가져오기
+            List<RecommendedPlaceDto> foodList = getPlaces(golfCourse, 39);
+            List<RecommendedPlaceDto> tourList = getPlaces(golfCourse, 12);
+            List<RecommendedPlaceDto> stayList = getFilteredStays(golfCourse, courseType);
+
+            prompt.append("**").append(i + 1).append("일차 (").append(golfCourse.getName()).append(" 주변) 추천 가능 장소:**\n");
+
+            // 음식점 목록 (상위 10개만)
+            if (!foodList.isEmpty()) {
+                prompt.append("- 음식점 (").append(Math.min(10, foodList.size())).append("개): ");
+                for (int j = 0; j < Math.min(10, foodList.size()); j++) {
+                    RecommendedPlaceDto place = foodList.get(j);
+                    String[] addressParts = place.getAddress().split(" ");
+                    String district = addressParts.length > 2 ? addressParts[2] : "제주";
+                    prompt.append(place.getName()).append("(").append(district).append(")");
+                    if (j < Math.min(9, foodList.size() - 1)) prompt.append(", ");
+                }
+                prompt.append("\n");
+            }
+
+            // 관광지 목록 (상위 10개만)
+            if (!tourList.isEmpty()) {
+                prompt.append("- 관광지 (").append(Math.min(10, tourList.size())).append("개): ");
+                for (int j = 0; j < Math.min(10, tourList.size()); j++) {
+                    RecommendedPlaceDto place = tourList.get(j);
+                    String[] addressParts = place.getAddress().split(" ");
+                    String district = addressParts.length > 2 ? addressParts[2] : "제주";
+                    prompt.append(place.getName()).append("(").append(district).append(")");
+                    if (j < Math.min(9, tourList.size() - 1)) prompt.append(", ");
+                }
+                prompt.append("\n");
+            }
+
+            // 숙소 목록 (상위 5개만, 마지막 날 제외)
+            if (!stayList.isEmpty() && i < travelDays - 1) {
+                prompt.append("- 숙소 (").append(Math.min(5, stayList.size())).append("개): ");
+                for (int j = 0; j < Math.min(5, stayList.size()); j++) {
+                    RecommendedPlaceDto place = stayList.get(j);
+                    String[] addressParts = place.getAddress().split(" ");
+                    String district = addressParts.length > 2 ? addressParts[2] : "제주";
+                    prompt.append(place.getName()).append("(").append(district).append(")");
+                    if (j < Math.min(4, stayList.size() - 1)) prompt.append(", ");
+                }
+                prompt.append("\n");
+            }
+            prompt.append("\n");
+        }
+
         prompt.append("**필수 준수 사항 - 매우 중요:**\n");
-        prompt.append("1. **숙소 추천 규칙 (절대 준수)**: \n");
+        prompt.append("1. **지역 기반 필터링 (신규 추가)**:\n");
+        prompt.append("   - 각 골프장과 같은 시/군/구 또는 인접한 읍/면/동의 장소를 우선 추천\n");
+        prompt.append("   - 골프장 주소를 기준으로 이동 거리가 최소화되는 장소들을 선택\n");
+        prompt.append("   - 제주시 골프장이면 제주시 내 장소, 서귀포시 골프장이면 서귀포시 내 장소 우선\n");
+        prompt.append("   - 읍면동이 다르더라도 인접 지역이면 추천 가능 (이동시간 30분 이내)\n\n");
+
+        prompt.append("2. **숙소 추천 규칙 (절대 준수)**: \n");
         prompt.append("   - 총 여행 기간: ").append(travelDays).append("일\n");
         prompt.append("   - 필요한 숙박: ").append(travelDays - 1).append("박 (마지막 날 제외)\n");
         prompt.append("   - 숙소가 필요한 날: ");
@@ -479,29 +567,29 @@ public class CourseRecommendationService {
             prompt.append("     * ").append(travelDays - 1).append("박").append(travelDays).append("일 코스: 1일차부터 ").append(travelDays - 1).append("일차까지 숙소 필수, ").append(travelDays).append("일차에는 숙소 없음\n");
         }
 
-        prompt.append("2. **중복 절대 금지 규칙**:\n");
+        prompt.append("3. **중복 절대 금지 규칙**:\n");
         prompt.append("   - 음식점: 전체 여행 기간 동안 같은 음식점 중복 추천 절대 금지\n");
         prompt.append("   - 관광지: 전체 여행 기간 동안 같은 관광지 중복 추천 절대 금지\n");
         prompt.append("   - 숙소: 중복 가능 (같은 호텔에 연박 허용)\n");
         prompt.append("   - 골프장: 중복 가능 (다른 날 같은 골프장 가능)\n\n");
 
         prompt.append("**추천 가이드라인:**\n");
-        prompt.append("3. **자유로운 일정 구성**: 골프장+음식점+관광지+숙소 고정 조합이 아니어도 됩니다\n");
-        prompt.append("4. **시간대별 적절한 추천**: \n");
+        prompt.append("4. **자유로운 일정 구성**: 골프장+음식점+관광지+숙소 고정 조합이 아니어도 됩니다\n");
+        prompt.append("5. **시간대별 적절한 추천**: \n");
         prompt.append("   - 점심 시간대(12:00-15:00) 포함 시: 점심 식사를 포함하면 좋지만 필수 아님\n");
         prompt.append("   - 저녁 시간대(17:00-20:00) 포함 시: 저녁 식사를 포함하면 좋지만 필수는 아닙니다\n");
         prompt.append("   - 각 시간대에 강제로 식사만 하는 것이 아니라 상황에 맞는 활동 자유 선택\n");
-        prompt.append("5. **효율적 동선**: 골프장과의 이동 거리를 최소화하여 효율적인 동선 고려\n");
-        prompt.append("6. **시간 여유**: 각 활동 간 이동 시간을 최소 30분씩 확보\n");
-        prompt.append("7. **시간 겹침 방지**: 골프 종료 시간 이후에만 다른 활동 가능\n");
-        prompt.append("8. **다양한 패턴 허용**:\n");
+        prompt.append("6. **효율적 동선**: 골프장과의 이동 거리를 최소화하여 효율적인 동선 고려\n");
+        prompt.append("7. **시간 여유**: 각 활동 간 이동 시간을 최소 30분씩 확보\n");
+        prompt.append("8. **시간 겹침 방지**: 골프 종료 시간 이후에만 다른 활동 가능\n");
+        prompt.append("9. **다양한 패턴 허용**:\n");
         prompt.append("   - 점심만 (골프 후 점심 후 숙소) - 마지막 날 제외\n");
         prompt.append("   - 점심 + 관광 + 숙소 - 마지막 날 제외\n");
         prompt.append("   - 점심 + 관광 + 저녁 + 숙소 - 마지막 날 제외\n");
         prompt.append("   - 관광 + 저녁 + 숙소 (점심 생략) - 마지막 날 제외\n");
         prompt.append("   - 카페 + 휴식 + 숙소 등 자유로운 조합 - 마지막 날 제외\n");
         prompt.append("   - 마지막 날만: 점심 후 귀가, 관광 후 귀가 등 (숙소 없음)\n");
-        prompt.append("9. **일차별 다양성**: 각 일차마다 다른 스타일의 여행 코스 제안\n\n");
+        prompt.append("10. **일차별 다양성**: 각 일차마다 다른 스타일의 여행 코스 제안\n\n");
 
         // 현재 시간을 기반으로 다양성 추가
         long currentTime = System.currentTimeMillis();
@@ -976,6 +1064,8 @@ public class CourseRecommendationService {
             System.out.println("=== Added stay for day " + dayNumber + " (not last day) ===");
         } else if (isLastDay) {
             System.out.println("=== Skipped stay for day " + dayNumber + " (last day) ===");
+        } else if (!isLastDay && randomStay == null) {
+            System.out.println("=== WARNING: Stay needed for day " + dayNumber + " but no stay data available ===");
         }
 
         return diversifiedPlaces;
