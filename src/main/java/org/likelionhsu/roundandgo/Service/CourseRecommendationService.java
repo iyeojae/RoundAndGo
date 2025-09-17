@@ -1,7 +1,6 @@
 package org.likelionhsu.roundandgo.Service;
 
 import lombok.RequiredArgsConstructor;
-import org.likelionhsu.roundandgo.Common.CommonResponse;
 import org.likelionhsu.roundandgo.Common.ScheduleColor;
 import org.likelionhsu.roundandgo.Dto.Request.ScheduleRequestDto;
 import org.likelionhsu.roundandgo.Dto.Response.CourseRecommendationResponseDto;
@@ -14,11 +13,8 @@ import org.likelionhsu.roundandgo.Mapper.CourseTypeMapper;
 import org.likelionhsu.roundandgo.Mapper.RegionCodeMapper;
 import org.likelionhsu.roundandgo.Repository.CourseRecommendationRepository;
 import org.likelionhsu.roundandgo.Repository.GolfCourseRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -703,7 +699,7 @@ public class CourseRecommendationService {
         }
     }
 
-    // 다일차 GPT 응답 파싱 메서드 (다일차)
+    // 다일차 GPT 응답 파싱 메서드 (다일차) - 카테고리별 매칭 개선
     private List<RecommendedPlaceDto> parseMultiDayGptRecommendation(
             String gptResponse,
             Integer dayNumber,
@@ -716,7 +712,6 @@ public class CourseRecommendationService {
         // GPT 응답이 오류 메시지인 경우 다양성을 위한 랜덤 선택 사용
         if (gptResponse.contains("오류가 발생했습니다") || gptResponse.contains("생성할 수 없습니다")) {
             System.out.println("=== GPT Error - Using Diversified Default Recommendation ===");
-            // travelDays 정보를 추출하기 위해 gptResponse 분석 시도
             Integer estimatedTravelDays = extractTravelDaysFromResponse(gptResponse);
             selectedPlaces.addAll(selectDiversifiedPlaces(dayNumber, foodList, tourList, stayList, estimatedTravelDays));
             return selectedPlaces;
@@ -731,32 +726,82 @@ public class CourseRecommendationService {
                 // 자유로운 파싱 로직 적용
                 String[] recommendedPlaceNames = dayRecommendation.split("\\|");
 
-                // 각 장소명에 대해 전체 카테고리에서 매칭 시도
+                System.out.println("=== GPT Recommended Places for Day " + dayNumber + " ===");
+                for (int i = 0; i < recommendedPlaceNames.length; i++) {
+                    System.out.println("Place " + (i+1) + ": '" + recommendedPlaceNames[i].trim() + "'");
+                }
+
+                // 🔥 핵심 수정: 순서별로 카테고리 매칭 시도 (음식점 → 관광지 → 숙소 순)
                 for (String placeName : recommendedPlaceNames) {
                     placeName = placeName.trim();
-                    placeName = placeName.replaceAll("\\[.*?\\]", "").trim();
+                    placeName = placeName.replaceAll("\\[.*?]", "").trim();
 
                     if (placeName.isEmpty()) continue;
 
                     RecommendedPlaceDto matchedPlace = null;
+                    String expectedCategory = determineExpectedCategory(placeName, selectedPlaces.size(), recommendedPlaceNames.length);
 
-                    // 전체 카테고리에서 순차적으로 찾기
-                    matchedPlace = findExactMatch(placeName, foodList);
-                    if (matchedPlace != null) {
-                        selectedPlaces.add(matchedPlace);
-                        continue;
+                    System.out.println("=== Matching '" + placeName + "' (expected: " + expectedCategory + ") ===");
+
+                    // 예상 카테고리부터 우선 시도
+                    if ("food".equals(expectedCategory)) {
+                        matchedPlace = findExactMatch(placeName, foodList);
+                        if (matchedPlace != null) {
+                            System.out.println("✅ Matched as FOOD: " + matchedPlace.getName());
+                            selectedPlaces.add(matchedPlace);
+                            continue;
+                        }
+                    } else if ("tour".equals(expectedCategory)) {
+                        matchedPlace = findExactMatch(placeName, tourList);
+                        if (matchedPlace != null) {
+                            System.out.println("✅ Matched as TOUR: " + matchedPlace.getName());
+                            selectedPlaces.add(matchedPlace);
+                            continue;
+                        }
+                    } else if ("stay".equals(expectedCategory)) {
+                        matchedPlace = findExactMatch(placeName, stayList);
+                        if (matchedPlace != null) {
+                            System.out.println("✅ Matched as STAY: " + matchedPlace.getName());
+                            selectedPlaces.add(matchedPlace);
+                            continue;
+                        }
                     }
 
-                    matchedPlace = findExactMatch(placeName, tourList);
-                    if (matchedPlace != null) {
-                        selectedPlaces.add(matchedPlace);
-                        continue;
-                    }
+                    // 예상 카테고리에서 매칭 실패 시, 다른 카테고리에서도 시도하되 경고 출력
+                    if (matchedPlace == null) {
+                        System.out.println("⚠️ Expected category '" + expectedCategory + "' failed, trying other categories...");
 
-                    matchedPlace = findExactMatch(placeName, stayList);
-                    if (matchedPlace != null) {
-                        selectedPlaces.add(matchedPlace);
-                        continue;
+                        // 음식점에서 찾기
+                        if (!"food".equals(expectedCategory)) {
+                            matchedPlace = findExactMatch(placeName, foodList);
+                            if (matchedPlace != null) {
+                                System.out.println("⚠️ CATEGORY MISMATCH: Expected " + expectedCategory + " but matched FOOD: " + matchedPlace.getName());
+                                selectedPlaces.add(matchedPlace);
+                                continue;
+                            }
+                        }
+
+                        // 관광지에서 찾기
+                        if (!"tour".equals(expectedCategory)) {
+                            matchedPlace = findExactMatch(placeName, tourList);
+                            if (matchedPlace != null) {
+                                System.out.println("⚠️ CATEGORY MISMATCH: Expected " + expectedCategory + " but matched TOUR: " + matchedPlace.getName());
+                                selectedPlaces.add(matchedPlace);
+                                continue;
+                            }
+                        }
+
+                        // 숙소에서 찾기
+                        if (!"stay".equals(expectedCategory)) {
+                            matchedPlace = findExactMatch(placeName, stayList);
+                            if (matchedPlace != null) {
+                                System.out.println("⚠️ CATEGORY MISMATCH: Expected " + expectedCategory + " but matched STAY: " + matchedPlace.getName());
+                                selectedPlaces.add(matchedPlace);
+                                continue;
+                            }
+                        }
+
+                        System.out.println("❌ No match found in any category for: " + placeName);
                     }
                 }
 
@@ -802,23 +847,19 @@ public class CourseRecommendationService {
         List<RecommendedPlaceDto> diversifiedPlaces = new ArrayList<>();
 
         // 각 카테고리에서 하나씩 랜덤 선택
-        RecommendedPlaceDto randomFood = foodList.stream().findAny().orElse(null);
-        RecommendedPlaceDto randomTour = tourList.stream().findAny().orElse(null);
-        RecommendedPlaceDto randomStay = stayList.stream().findAny().orElse(null);
-
-        if (randomFood != null) diversifiedPlaces.add(randomFood);
-        if (randomTour != null) diversifiedPlaces.add(randomTour);
+        foodList.stream().findAny().ifPresent(diversifiedPlaces::add);
+        tourList.stream().findAny().ifPresent(diversifiedPlaces::add);
 
         // 숙소 추천 규칙: 마지막 날이 아닌 경우에만 숙소 추가
         boolean isLastDay = (travelDays != null && dayNumber != null && dayNumber.equals(travelDays));
 
-        if (!isLastDay && randomStay != null) {
-            diversifiedPlaces.add(randomStay);
-            System.out.println("=== Added stay for day " + dayNumber + " (not last day) ===");
-        } else if (isLastDay) {
+        if (!isLastDay) {
+            stayList.stream().findAny().ifPresent(stay -> {
+                diversifiedPlaces.add(stay);
+                System.out.println("=== Added stay for day " + dayNumber + " (not last day) ===");
+            });
+        } else {
             System.out.println("=== Skipped stay for day " + dayNumber + " (last day) ===");
-        } else if (!isLastDay && randomStay == null) {
-            System.out.println("=== WARNING: Stay needed for day " + dayNumber + " but no stay data available ===");
         }
 
         return diversifiedPlaces;
@@ -891,50 +932,198 @@ public class CourseRecommendationService {
 
             if (currentTime.isBefore(LocalTime.of(15, 0))) {
                 // 오후 3시 이전이면 점심 추천
-                RecommendedPlaceDto food = foodList.stream().findFirst().orElse(null);
-                if (food != null) selectedPlaces.add(food);
+                foodList.stream().findFirst().ifPresent(selectedPlaces::add);
             }
 
             if (currentTime.isBefore(LocalTime.of(18, 0))) {
                 // 오후 6시 이전이면 관광지 추천
-                RecommendedPlaceDto tour = tourList.stream().findFirst().orElse(null);
-                if (tour != null) selectedPlaces.add(tour);
+                tourList.stream().findFirst().ifPresent(selectedPlaces::add);
             }
         }
 
         return selectedPlaces;
     }
 
-    // 정확한 매칭을 위한 헬퍼 메서드
+    // 정확한 매칭을 위한 헬퍼 메서드 (개선된 버전)
     private RecommendedPlaceDto findExactMatch(String targetName, List<RecommendedPlaceDto> places) {
+        System.out.println("=== findExactMatch Debug ===");
+        System.out.println("Looking for: '" + targetName + "'");
+        System.out.println("Available places count: " + places.size());
+
+        // 처음 몇 개 장소명 출력으로 디버깅
+        if (!places.isEmpty()) {
+            String placeType = places.getFirst().getType();
+            System.out.println("Place type: " + placeType);
+            System.out.println("Available places (first 5):");
+            places.stream().limit(5).forEach(place ->
+                System.out.println("  - '" + place.getName() + "' (주소: " + place.getAddress() + ")"));
+        }
+
+        // 0. 빈 문자열 체크
+        if (targetName == null || targetName.trim().isEmpty()) {
+            System.out.println("Target name is empty");
+            return null;
+        }
+
+        targetName = targetName.trim();
+
         // 1. 정확한 이름 매칭
         for (RecommendedPlaceDto place : places) {
             if (place.getName().equals(targetName)) {
+                System.out.println("✅ Exact match found: " + place.getName());
                 return place;
             }
         }
 
-        // 2. 부분 매칭 (양방향)
+        // 2. 부분 매칭 (양방향) - 대소문자 구분 없이
         for (RecommendedPlaceDto place : places) {
-            if (place.getName().contains(targetName) || targetName.contains(place.getName())) {
+            String placeName = place.getName().toLowerCase();
+            String target = targetName.toLowerCase();
+
+            if (placeName.contains(target) || target.contains(placeName)) {
+                System.out.println("✅ Partial match found: " + place.getName() + " (searched: " + targetName + ")");
                 return place;
             }
         }
 
-        // 3. 키워드 매칭
-        String[] keywords = targetName.split("[\\s\\-]+");
-        for (String keyword : keywords) {
-            keyword = keyword.trim();
-            if (keyword.length() > 1) {
-                for (RecommendedPlaceDto place : places) {
-                    if (place.getName().contains(keyword)) {
-                        return place;
+        // 3. 키워드 기반 매칭 (개선된 버전)
+        String[] targetKeywords = targetName.split("[\\s\\-,/.]+");
+        for (RecommendedPlaceDto place : places) {
+            String placeName = place.getName().toLowerCase();
+
+            // 타겟 키워드 중 하나라도 포함되면 매칭
+            for (String keyword : targetKeywords) {
+                keyword = keyword.trim().toLowerCase();
+                if (keyword.length() > 1 && placeName.contains(keyword)) {
+                    System.out.println("✅ Keyword match found: " + place.getName() + " (keyword: " + keyword + ")");
+                    return place;
+                }
+            }
+        }
+
+        // 4. 주소 기반 매칭 (새로 추가) - 지역명으로 매칭
+        System.out.println("=== Address-based Matching ===");
+        String[] targetAddressKeywords = extractAddressKeywords(targetName);
+        if (targetAddressKeywords.length > 0) {
+            System.out.println("Target address keywords: " + String.join(", ", targetAddressKeywords));
+
+            for (RecommendedPlaceDto place : places) {
+                String placeAddress = place.getAddress().toLowerCase();
+                for (String addressKeyword : targetAddressKeywords) {
+                    if (placeAddress.contains(addressKeyword.toLowerCase())) {
+                        // 주소 키워드가 매칭되면 장소명도 유사한지 추가 검증
+                        if (isSimilarPlaceName(targetName, place.getName())) {
+                            System.out.println("✅ Address-based match found: " + place.getName() +
+                                " (address keyword: " + addressKeyword + ")");
+                            return place;
+                        }
                     }
                 }
             }
         }
 
+        // 5. 숙소 특별 매칭 로직 (호텔명 변형 처리)
+        if (!places.isEmpty() && "stay".equals(places.getFirst().getType())) {
+            System.out.println("=== Stay Special Matching ===");
+            System.out.println("Searching for stay: '" + targetName + "'");
+
+            // 숙소명에서 공통 키워드 추출 및 매칭
+            String[] specialKeywords = {
+                "그랜드", "조선", "신라", "롯데", "하얏트", "스위트", "호텔", "리조트", "제주",
+                "파라다이스", "메리어트", "힐튼", "워커힐", "라마다", "베스트웨스턴", "아난티"
+            };
+
+            System.out.println("Trying special keywords matching...");
+            for (String specialKeyword : specialKeywords) {
+                if (targetName.toLowerCase().contains(specialKeyword.toLowerCase())) {
+                    System.out.println("Target contains keyword: " + specialKeyword);
+                    for (RecommendedPlaceDto place : places) {
+                        if (place.getName().toLowerCase().contains(specialKeyword.toLowerCase())) {
+                            System.out.println("✅ Stay special match found: " + place.getName() + " (special keyword: " + specialKeyword + ")");
+                            return place;
+                        }
+                    }
+                }
+            }
+
+            // 6. 숙소 주소 기반 매칭 (지역별)
+            System.out.println("Trying stay address-based matching...");
+            String[] stayAddressKeywords = {"제주시", "서귀포시", "중문", "성산", "구좌", "애월", "한림", "색달"};
+            for (String addressKeyword : stayAddressKeywords) {
+                if (targetName.toLowerCase().contains(addressKeyword.toLowerCase())) {
+                    for (RecommendedPlaceDto place : places) {
+                        if (place.getAddress().toLowerCase().contains(addressKeyword.toLowerCase())) {
+                            System.out.println("✅ Stay address match found: " + place.getName() +
+                                " (address keyword: " + addressKeyword + ")");
+                            return place;
+                        }
+                    }
+                }
+            }
+
+            // 7. 숙소 타입별 대체 매칭 (매칭 실패 시 첫 번째 숙소 반환)
+            System.out.println("No exact match found, using fallback strategy...");
+            if (!places.isEmpty()) {
+                RecommendedPlaceDto fallbackStay = places.getFirst();
+                System.out.println("✅ Stay fallback match: " + fallbackStay.getName() + " (instead of: " + targetName + ")");
+                return fallbackStay;
+            }
+
+            // 모든 매칭이 실패했을 때 사용 가능한 숙소 목록 출력
+            System.out.println("❌ No stay match found. Available stays:");
+            places.stream().limit(10).forEach(place ->
+                System.out.println("  - '" + place.getName() + "' (주소: " + place.getAddress() + ")"));
+        }
+
+        // 8. 음식점/관광지도 매칭 실패 시 대체 로직 추가
+        if (!places.isEmpty() && ("food".equals(places.getFirst().getType()) || "tour".equals(places.getFirst().getType()))) {
+            // 음식점이나 관광지의 경우 매칭이 실패하면 랜덤하게 선택하지 않고 null 반환
+            // 이렇게 하면 GPT가 추천한 정확한 장소가 없을 때 다른 카테고리에서 찾을 수 있음
+            System.out.println("Food/Tour exact match not found, returning null for category switching");
+        }
+
+        System.out.println("❌ No match found for: '" + targetName + "'");
         return null;
+    }
+
+    // 주소 키워드 추출 헬퍼 메서드
+    private String[] extractAddressKeywords(String targetName) {
+        // 제주도 지역명 키워드들
+        String[] possibleAddressKeywords = {
+            "제주시", "서귀포시", "중문", "성산", "구좌", "애월", "한림", "색달", "표선", "남원",
+            "대정", "안덕", "조천", "한경", "우도", "마라도", "추자도"
+        };
+
+        List<String> foundKeywords = new ArrayList<>();
+        String lowerTargetName = targetName.toLowerCase();
+
+        for (String keyword : possibleAddressKeywords) {
+            if (lowerTargetName.contains(keyword.toLowerCase())) {
+                foundKeywords.add(keyword);
+            }
+        }
+
+        return foundKeywords.toArray(new String[0]);
+    }
+
+    // 장소명 유사도 검사 헬퍼 메서드
+    private boolean isSimilarPlaceName(String targetName, String placeName) {
+        // 간단한 유사도 검사 - 공통 단어가 있는지 확인
+        String[] targetWords = targetName.toLowerCase().split("[\\s\\-,/.]+");
+        String[] placeWords = placeName.toLowerCase().split("[\\s\\-,/.]+");
+
+        for (String targetWord : targetWords) {
+            if (targetWord.length() > 1) { // 한 글자 단어는 제외
+                for (String placeWord : placeWords) {
+                    if (targetWord.equals(placeWord) ||
+                        targetWord.contains(placeWord) ||
+                        placeWord.contains(targetWord)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     // 관광 API 호출 메서드
@@ -1047,15 +1236,43 @@ public class CourseRecommendationService {
         };
     }
 
-    // 예외 처리 메서드
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<?> handleAccessDenied(AccessDeniedException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(CommonResponse.builder()
-                        .statusCode(403)
-                        .msg(e.getMessage())
-                        .build());
+    // 예상 카테고리 결정 헬퍼 메서드
+    private String determineExpectedCategory(String placeName, int currentIndex, int totalPlaces) {
+        // 장소 이름으로 카테고리 추정
+        String lowerName = placeName.toLowerCase();
+
+        // 숙소 키워드 체크
+        String[] hotelKeywords = {"호텔", "리조트", "펜션", "스위트", "그랜드", "조선", "신라", "롯데", "하얏트", "아난티"};
+        for (String keyword : hotelKeywords) {
+            if (lowerName.contains(keyword)) {
+                return "stay";
+            }
+        }
+
+        // 관광지 키워드 체크
+        String[] tourKeywords = {"굴", "봉", "공원", "박물관", "전시관", "해변", "폭포", "산", "섬", "성", "사찰", "절"};
+        for (String keyword : tourKeywords) {
+            if (lowerName.contains(keyword)) {
+                return "tour";
+            }
+        }
+
+        // 음식점 키워드 체크
+        String[] foodKeywords = {"식당", "맛집", "카페", "음식점", "레스토랑", "갈치", "흑돼지", "해산물", "국수", "라면"};
+        for (String keyword : foodKeywords) {
+            if (lowerName.contains(keyword)) {
+                return "food";
+            }
+        }
+
+        // 위치별 추정 (일반적인 GPT 응답 패턴: 음식점 → 관광지 → 숙소)
+        if (currentIndex == 0) return "food";
+        if (currentIndex == 1) return "tour";
+        if (currentIndex == 2) return "stay";
+
+        return "unknown";
     }
+
 
     // 스케줄 생성 메서드
     private void createSchedulesForRecommendation(
