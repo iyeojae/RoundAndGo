@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.likelionhsu.roundandgo.Common.ProfileColor;
 
 @Getter
 @Builder
@@ -12,4 +13,5 @@ import lombok.NoArgsConstructor;
 public class ProfileImageResponseDto {
     private String url;
     private String nickname;
+    private ProfileColor profileColor;
 }

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
 import org.likelionhsu.roundandgo.Common.LoginType;
+import org.likelionhsu.roundandgo.Common.ProfileColor;
 import org.likelionhsu.roundandgo.Common.Role;
 import org.likelionhsu.roundandgo.Entity.EmailVerification;
 import org.likelionhsu.roundandgo.Repository.EmailVerificationRepository;
@@ -102,6 +103,7 @@ public class AuthController {
                 .nickname(dto.getNickname())
                 .loginType(LoginType.EMAIL)
                 .role(Role.ROLE_USER)
+                .profileColor(ProfileColor.PINK) // 기본 색상을 PINK로 설정
                 .isActived(true)
                 .build();
 

@@ -3,6 +3,7 @@ package org.likelionhsu.roundandgo.Controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.roundandgo.Common.CommonResponse;
+import org.likelionhsu.roundandgo.Common.ProfileColor;
 import org.likelionhsu.roundandgo.Dto.ProfileImageResponseDto;
 import org.likelionhsu.roundandgo.Entity.User;
 import org.likelionhsu.roundandgo.Security.UserDetailsImpl;
@@ -24,11 +25,12 @@ public class ProfileImageController {
     public ResponseEntity<CommonResponse<ProfileImageResponseDto>> uploadProfileImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "nickname", required = false) String nickname,
+            @RequestParam(value = "profileColor", required = false) ProfileColor profileColor,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         try {
-            String imageUrl = profileImageService.uploadProfileImageWithNickname(
-                    file, userDetails.getUser().getId(), nickname);
+            String imageUrl = profileImageService.uploadProfileImageWithNicknameAndColor(
+                    file, userDetails.getUser().getId(), nickname, profileColor);
 
             // 업데이트된 사용자 정보 조회
             User updatedUser = profileImageService.getUserProfileInfo(userDetails.getUser().getId());
@@ -36,6 +38,7 @@ public class ProfileImageController {
             ProfileImageResponseDto response = ProfileImageResponseDto.builder()
                     .url(imageUrl)
                     .nickname(updatedUser.getNickname())
+                    .profileColor(updatedUser.getProfileColor())
                     .build();
 
             return ResponseEntity.ok(
@@ -56,6 +59,43 @@ public class ProfileImageController {
         }
     }
 
+    @PutMapping("/info")
+    public ResponseEntity<CommonResponse<ProfileImageResponseDto>> updateProfileInfo(
+            @RequestParam(value = "nickname", required = false) String nickname,
+            @RequestParam(value = "profileColor", required = false) ProfileColor profileColor,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        try {
+            profileImageService.updateProfileWithoutImage(
+                    userDetails.getUser().getId(), nickname, profileColor);
+
+            // 업데이트된 사용자 정보 조회
+            User updatedUser = profileImageService.getUserProfileInfo(userDetails.getUser().getId());
+
+            ProfileImageResponseDto response = ProfileImageResponseDto.builder()
+                    .url(updatedUser.getProfileImage())
+                    .nickname(updatedUser.getNickname())
+                    .profileColor(updatedUser.getProfileColor())
+                    .build();
+
+            return ResponseEntity.ok(
+                    CommonResponse.<ProfileImageResponseDto>builder()
+                            .statusCode(200)
+                            .msg("프로필 정보 업데이트 성공")
+                            .data(response)
+                            .build()
+            );
+        } catch (RuntimeException e) {
+            log.error("프로필 정보 업데이트 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    CommonResponse.<ProfileImageResponseDto>builder()
+                            .statusCode(400)
+                            .msg(e.getMessage())
+                            .build()
+            );
+        }
+    }
+
     @GetMapping("/image")
     public ResponseEntity<CommonResponse<ProfileImageResponseDto>> getProfileImage(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -66,6 +106,7 @@ public class ProfileImageController {
             ProfileImageResponseDto response = ProfileImageResponseDto.builder()
                     .url(user.getProfileImage())
                     .nickname(user.getNickname())
+                    .profileColor(user.getProfileColor())
                     .build();
 
             return ResponseEntity.ok(

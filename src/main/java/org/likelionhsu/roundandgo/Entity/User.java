@@ -3,6 +3,7 @@ package org.likelionhsu.roundandgo.Entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.likelionhsu.roundandgo.Common.LoginType;
+import org.likelionhsu.roundandgo.Common.ProfileColor;
 import org.likelionhsu.roundandgo.Common.Role;
 import org.likelionhsu.roundandgo.Common.Timestamped;
 
@@ -30,6 +31,11 @@ public class User extends Timestamped {
     private String nickname;
 
     private String profileImage;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private ProfileColor profileColor = ProfileColor.PINK;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

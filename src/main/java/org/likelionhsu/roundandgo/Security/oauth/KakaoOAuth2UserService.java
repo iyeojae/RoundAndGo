@@ -2,6 +2,7 @@ package org.likelionhsu.roundandgo.Security.oauth;
 
 import lombok.RequiredArgsConstructor;
 import org.likelionhsu.roundandgo.Common.LoginType;
+import org.likelionhsu.roundandgo.Common.ProfileColor;
 import org.likelionhsu.roundandgo.Common.Role;
 import org.likelionhsu.roundandgo.Entity.User;
 import org.likelionhsu.roundandgo.Repository.UserRepository;
@@ -48,6 +49,7 @@ public class KakaoOAuth2UserService extends DefaultOAuth2UserService {
                     .password("kakao")
                     .loginType(LoginType.KAKAO)
                     .role(Role.ROLE_USER)
+                    .profileColor(ProfileColor.PINK) // 기본 색상을 PINK로 설정
                     .isActived(true)
                     .build();
             return userRepository.save(newUser);
