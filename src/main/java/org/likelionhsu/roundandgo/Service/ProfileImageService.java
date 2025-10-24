@@ -181,7 +181,7 @@ public class ProfileImageService {
 
     private void deleteExistingFile(String imageUrl) {
         try {
-            if (imageUrl.startsWith("https://roundandgo.shop/uploads/profile/")) {
+            if (imageUrl.startsWith("https://api.roundandgo.com/uploads/profile/")) {
                 String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
                 Path filePath = Paths.get(profileDir, fileName);
 

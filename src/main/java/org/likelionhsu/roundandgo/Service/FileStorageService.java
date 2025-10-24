@@ -28,7 +28,7 @@ public class FileStorageService {
     @Value("${upload.posts-dir}")
     private String postsUploadDir;
 
-    private static final String BASE_URL = "https://roundandgo.shop/uploads/posts";
+    private static final String BASE_URL = "https://api.roundandgo.com/uploads/posts";
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("png", "jpg", "jpeg", "webp");
     private static final long MAX_FILE_SIZE = 6 * 1024 * 1024; // 6MB
 
