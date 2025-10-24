@@ -22,8 +22,8 @@ public class JwtProvider {
     private Key key;
 
     // ✅ 직접 설정한 만료 시간
-    private final long accessTokenExpirationMillis = Duration.ofHours(1).toMillis(); // 1시간
-    private final long refreshTokenExpirationMillis = Duration.ofDays(14).toMillis(); // 14일
+    private final long accessTokenExpirationMillis = Duration.ofDays(14).toMillis(); //14일
+    private final long refreshTokenExpirationMillis = Duration.ofDays(30).toMillis(); // 30일
 
     @PostConstruct
     protected void init() {
