@@ -176,7 +176,7 @@ public class ProfileImageService {
     }
 
     private String generateImageUrl(String fileName) {
-        return "https://roundandgo.shop/uploads/profile/" + fileName;
+        return "https://api.roundandgo.com/uploads/profile/" + fileName;
     }
 
     private void deleteExistingFile(String imageUrl) {
