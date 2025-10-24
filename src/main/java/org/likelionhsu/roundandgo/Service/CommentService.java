@@ -96,6 +96,12 @@ public class CommentService {
             throw new RuntimeException("작성자만 댓글을 삭제할 수 있습니다.");
         }
 
+        // 대댓글 먼저 삭제
+        List<Comment> replies = commentRepository.findByParentCommentId(commentId);
+        if (replies != null && !replies.isEmpty()) {
+            commentRepository.deleteAll(replies);
+        }
+
         // 댓글 삭제
         commentRepository.delete(comment);
     }
