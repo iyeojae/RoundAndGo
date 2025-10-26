@@ -269,6 +269,19 @@ public class CommunityService {
         return likeRepository.countByCommunity(community);
     }
 
+    /**
+     * 사용자가 특정 게시글에 좋아요를 눌렀는지 확인
+     * @param user 사용자
+     * @param communityId 게시글 ID
+     * @return 좋아요 여부 (true: 좋아요 상태, false: 좋아요 안 한 상태)
+     */
+    public boolean isLikedByUser(User user, Long communityId) {
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
+
+        return likeRepository.findByUserAndCommunity(user, community).isPresent();
+    }
+
     public List<CommunityResponseDto> getTop3PopularPosts() {
         return communityRepository.findTop3ByLikes().stream()
                 .map(CommunityResponseDto::new)

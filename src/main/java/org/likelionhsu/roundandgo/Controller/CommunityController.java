@@ -404,4 +404,37 @@ public class CommunityController {
                             .build());
         }
     }
+
+    /**
+     * 사용자별 게시글 좋아요 상태 확인
+     * @param id 게시글 ID
+     * @param userDetails 현재 로그인한 사용자 정보
+     * @return 현재 사용자의 해당 게시글 좋아요 상태 (true: 좋아요 상태, false: 좋아요 안 한 상태)
+     */
+    @GetMapping("/{id}/isLiked")
+    public ResponseEntity<CommonResponse<Boolean>> isPostLikedByUser(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        try {
+            boolean isLiked = communityService.isLikedByUser(userDetails.getUser(), id);
+            return ResponseEntity.ok(CommonResponse.<Boolean>builder()
+                    .statusCode(200)
+                    .msg("좋아요 상태 조회 성공")
+                    .data(isLiked)
+                    .build());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    CommonResponse.<Boolean>builder()
+                            .statusCode(404)
+                            .msg(e.getMessage())
+                            .build());
+        } catch (Exception e) {
+            log.error("좋아요 상태 조회 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    CommonResponse.<Boolean>builder()
+                            .statusCode(500)
+                            .msg("좋아요 상태 조회에 실패했습니다")
+                            .build());
+        }
+    }
 }
