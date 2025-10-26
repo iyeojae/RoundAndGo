@@ -2,8 +2,7 @@ package org.likelionhsu.roundandgo.ExternalApi;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.likelionhsu.roundandgo.Dto.Api.TourApiGolfDto;
-import org.likelionhsu.roundandgo.Dto.Api.TourItem;
+import org.likelionhsu.roundandgo.Dto.Api.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -137,6 +136,133 @@ public class TourApiClient {
         return List.of(); // 모든 반경에서 결과가 없을 경우
     }
 
+    // 숙소 상세 정보 (detailCommon2)
+    public AccommodationDetailDto fetchAccommodationDetail(String contentId) {
+        String path = "/detailCommon2";
+
+        try {
+            AccommodationDetailResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("serviceKey", apiKey)
+                            .queryParam("contentId", contentId)
+                            .queryParam("MobileOS", "ETC")
+                            .queryParam("MobileApp", "RoundAndGo")
+                            .queryParam("_type", "json")
+                            .build())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(AccommodationDetailResponse.class)
+                    .block();
+
+            if (response != null && response.getResponse() != null &&
+                    response.getResponse().getBody() != null &&
+                    response.getResponse().getBody().getItems() != null &&
+                    response.getResponse().getBody().getItems().getItem() != null &&
+                    !response.getResponse().getBody().getItems().getItem().isEmpty()) {
+                return response.getResponse().getBody().getItems().getItem().get(0);
+            }
+        } catch (Exception e) {
+            log.error("숙소 상세 정보 조회 실패 - contentId: {}, error: {}", contentId, e.getMessage());
+        }
+
+        return null;
+    }
+
+    // 숙소 이미지 (detailImage2)
+    public List<AccommodationImageDto> fetchAccommodationImages(String contentId) {
+        String path = "/detailImage2";
+
+        try {
+            AccommodationImageResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("serviceKey", apiKey)
+                            .queryParam("contentId", contentId)
+                            .queryParam("MobileOS", "ETC")
+                            .queryParam("MobileApp", "RoundAndGo")
+                            .queryParam("imageYN", "Y")
+                            .queryParam("numOfRows", 10)
+                            .queryParam("_type", "json")
+                            .build())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(AccommodationImageResponse.class)
+                    .block();
+
+            if (response != null && response.getResponse() != null &&
+                    response.getResponse().getBody() != null &&
+                    response.getResponse().getBody().getItems() != null &&
+                    response.getResponse().getBody().getItems().getItem() != null) {
+                return response.getResponse().getBody().getItems().getItem();
+            }
+        } catch (Exception e) {
+            log.error("숙소 이미지 조회 실패 - contentId: {}, error: {}", contentId, e.getMessage());
+        }
+
+        return List.of();
+    }
+
+    // 숙소 부대시설 정보 (detailInfo2)
+    public List<AccommodationInfoDto> fetchAccommodationInfo(String contentId) {
+        String path = "/detailInfo2";
+        int contentTypeId = 32; // 숙박
+
+        try {
+            AccommodationInfoResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("serviceKey", apiKey)
+                            .queryParam("contentTypeId", contentTypeId)
+                            .queryParam("contentId", contentId)
+                            .queryParam("MobileOS", "ETC")
+                            .queryParam("MobileApp", "RoundAndGo")
+                            .queryParam("_type", "json")
+                            .build())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(AccommodationInfoResponse.class)
+                    .block();
+
+            if (response != null && response.getResponse() != null &&
+                    response.getResponse().getBody() != null &&
+                    response.getResponse().getBody().getItems() != null &&
+                    response.getResponse().getBody().getItems().getItem() != null) {
+
+                // 시설 정보를 파싱하여 DTO로 변환
+                List<AccommodationInfoDto> infoList = new ArrayList<>();
+                for (AccommodationInfoRaw raw : response.getResponse().getBody().getItems().getItem()) {
+                    AccommodationInfoDto dto = new AccommodationInfoDto();
+                    dto.setRoomtitle(raw.getRoomtitle());
+                    dto.setSubfacility(raw.getSubfacility());
+                    dto.setRoomtype(raw.getRoomtype());
+                    dto.setRefundregulation(raw.getRefundregulation());
+
+                    AccommodationInfoDto.FacilitiesDto facilities = new AccommodationInfoDto.FacilitiesDto();
+                    facilities.setTv("Y".equals(raw.getRoomtv()));
+                    facilities.setPc("Y".equals(raw.getRoompc()));
+                    facilities.setInternet("Y".equals(raw.getRoominternet()));
+                    facilities.setRefrigerator("Y".equals(raw.getRoomrefrigerator()));
+                    facilities.setSofa("Y".equals(raw.getRoomsofa()));
+                    facilities.setTable("Y".equals(raw.getRoomtable()));
+                    facilities.setHairdryer("Y".equals(raw.getRoomhairdryer()));
+                    facilities.setBath("Y".equals(raw.getRoombath()));
+                    facilities.setBathfacility("Y".equals(raw.getRoombathfacility()));
+                    facilities.setAircondition("Y".equals(raw.getRoomaircondition()));
+
+                    dto.setFacilities(facilities);
+                    infoList.add(dto);
+                }
+
+                return infoList;
+            }
+        } catch (Exception e) {
+            log.error("숙소 부대시설 정보 조회 실패 - contentId: {}, error: {}", contentId, e.getMessage());
+        }
+
+        return List.of();
+    }
+
     @Data
     public static class TourApiResponseGolf {
         private ResponseGolf response;
@@ -175,6 +301,85 @@ public class TourApiClient {
         public static class ItemsGeneral {
             private List<TourItem> item;
         }
+    }
+
+    // 숙소 상세정보 응답 클래스들
+    @Data
+    public static class AccommodationDetailResponse {
+        private AccommodationDetailResponseBody response;
+
+        @Data
+        public static class AccommodationDetailResponseBody {
+            private AccommodationDetailBodyContent body;
+        }
+
+        @Data
+        public static class AccommodationDetailBodyContent {
+            private AccommodationDetailItems items;
+        }
+
+        @Data
+        public static class AccommodationDetailItems {
+            private List<AccommodationDetailDto> item;
+        }
+    }
+
+    @Data
+    public static class AccommodationImageResponse {
+        private AccommodationImageResponseBody response;
+
+        @Data
+        public static class AccommodationImageResponseBody {
+            private AccommodationImageBodyContent body;
+        }
+
+        @Data
+        public static class AccommodationImageBodyContent {
+            private AccommodationImageItems items;
+        }
+
+        @Data
+        public static class AccommodationImageItems {
+            private List<AccommodationImageDto> item;
+        }
+    }
+
+    @Data
+    public static class AccommodationInfoResponse {
+        private AccommodationInfoResponseBody response;
+
+        @Data
+        public static class AccommodationInfoResponseBody {
+            private AccommodationInfoBodyContent body;
+        }
+
+        @Data
+        public static class AccommodationInfoBodyContent {
+            private AccommodationInfoItems items;
+        }
+
+        @Data
+        public static class AccommodationInfoItems {
+            private List<AccommodationInfoRaw> item;
+        }
+    }
+
+    @Data
+    public static class AccommodationInfoRaw {
+        private String roomtitle;
+        private String subfacility;
+        private String roomtype;
+        private String refundregulation;
+        private String roomtv;
+        private String roompc;
+        private String roominternet;
+        private String roomrefrigerator;
+        private String roomsofa;
+        private String roomtable;
+        private String roomhairdryer;
+        private String roombath;
+        private String roombathfacility;
+        private String roomaircondition;
     }
 
 
