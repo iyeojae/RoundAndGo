@@ -20,7 +20,6 @@ public class Comment extends Timestamped {
 
     private String content; // 댓글 내용
 
-    private String author; // 댓글 작성자 이름
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

@@ -34,7 +34,6 @@ public class CommentService {
         Comment comment = Comment.builder()
                 .content(request.getContent())
                 .user(user)
-                .author(user.getNickname() != null ? user.getNickname() : "익명") // 닉네임이 없으면 익명으로 설정
                 .community(communityRepository.findById(request.getCommunityId())
                         .orElseThrow(() -> new RuntimeException("해당 커뮤니티 게시글을 찾을 수 없습니다.")))
                 .parentCommentId(request.getParentCommentId()) // 대댓글의 경우 부모 댓글 ID 설정

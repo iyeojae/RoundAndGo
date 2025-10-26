@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class CommentResponseDto {
     private Long id; // 댓글 ID
+    private Long authorId; // 댓글 작성자 ID
     private String content; // 댓글 내용
     private String author; // 댓글 작성자
     private String profileImage; // 작성자 프로필 이미지
@@ -24,8 +25,9 @@ public class CommentResponseDto {
 
     public CommentResponseDto(Comment comment, boolean isReply) {
         this.id = comment.getId();
+        this.authorId = comment.getUser().getId();
         this.content = comment.getContent();
-        this.author = comment.getAuthor();
+        this.author = comment.getUser().getNickname() != null ? comment.getUser().getNickname() : "익명";
         this.profileImage = comment.getUser().getProfileImage();
         this.profileColor = comment.getUser().getProfileColor();
         this.communityId = comment.getCommunity().getId();
