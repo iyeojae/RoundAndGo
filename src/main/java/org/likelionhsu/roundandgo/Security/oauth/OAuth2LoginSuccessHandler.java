@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.likelionhsu.roundandgo.Entity.User;
 import org.likelionhsu.roundandgo.Repository.UserRepository;
 import org.likelionhsu.roundandgo.Security.jwt.JwtProvider;
+import org.likelionhsu.roundandgo.Service.LoginHistoryService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -26,6 +27,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final LoginHistoryService loginHistoryService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -42,6 +44,15 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("카카오 계정이 존재하지 않습니다."));
+
+        // 로그인 기록 저장 (IP, User-Agent, 로그인 타입: KAKAO)
+        String ip = request.getRemoteAddr();
+        String ua = request.getHeader("User-Agent");
+        try {
+            loginHistoryService.recordLogin(user, ip, ua, "KAKAO");
+        } catch (Exception e) {
+            log.warn("OAuth2 로그인 기록 저장 실패: {}", e.getMessage());
+        }
 
         String accessToken = jwtTokenProvider.createAccessToken(user);
         String refreshToken = jwtTokenProvider.createRefreshToken(user);
